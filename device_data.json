@@ -1,0 +1,12 @@
+{
+    "bapiError": "{\"message\":\"Invalid latitude/longitude : '0,0' in input json. Please provide valid input\",\"status\":\"False\"}",
+    "bapiExecutionId": "8ea3164b-0542-4df2-b34c-c0a145f0069f",
+    "bapiKey": "50b5-89fd-4c7a-930a",
+    "bapiName": "Create Site",
+    "endTime": "Wed Nov 06 16:25:04 UTC 2019",
+    "endTimeEpoch": 1573057504332,
+    "startTime": "Wed Nov 06 16:25:04 UTC 2019",
+    "startTimeEpoch": 1573057504249,
+    "status": "FAILURE",
+    "timeDuration": 83
+}
