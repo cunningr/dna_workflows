@@ -113,4 +113,25 @@ When you add a new workflow using the script, you will see;
 
 Immediately after adding a new workflow, you should be able to execute ```python3 dna_workflows.py --noop``` and see your new workflow being staged for execution.
 
+### How it works
+
+The workflow engine ```dna_workflows.py``` and the workflow manager ```workflow_manager.py``` are intended to be generic code and should not need to be modified by workflow developers.
+
+When you run  ```dna_workflows.py```, it does the following;
+
+ 1. Looks in the ```workflow``` worksheet/table, scans the rows and tries to import a local python module by the name specified in the ```Name``` column.
+ 2. At the same time as importing the workflow python module, ```dna_workflows.py``` will look in the workbook for a worksheet with the same ```Name``` and load any tables into a python dictionary specific for that particular workflow.
+ 3. Every workflow worksheet defined in the workflow DB must have a ```control``` table that lists out the 'tasks' (python functions) available in that workflow, along with the ```Status``` and ```Stage``` it needs to be run in (if ```Status``` == enabled).
+ 4. Next, ```dna_workflows.py``` will build a list of all the workflow 'tasks' according to their ```Status``` that should be executed and sort them in order using the ```Stage``` value assigned to each task.
+ 5. Finally, ```dna_workflows.py``` will execute each workflow task passing it exactly two arguments ```api``` and ```workflow_dict``` which contain the authenticated dnacentersdk api object and a list of dictionaries each containing the rows of data from the workflow worksheet respectively.
+
+The workflow developer can leverage the dnacentersdk, the data they have defined in any tables within their workflow worksheet, and common logging and helper functions in order to build a new workflow.  Task execution is controlled via the workflow DB.
+
+**All workflow code must be written inside a python function, except for the initial workflow logging setup and any global workflow variable definitions.**
+
+To create a new workflow simply run;
+
+```workflow_manager.py --add-workflow <workflow-name>```
+
+This will do all the basic setup for you.  Just start writing your new workflow code in ```<workflow-name>/workflow.py``` file.
 
