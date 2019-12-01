@@ -1,22 +1,22 @@
 # DNA Workflows
 
-First things first; ***We accept no responsability for any kind of loss or damage caused by using this arragnement of software code.  We also do not provide any promises or committment of support for said code.  It is pretty much all on you.***
+First things first; ***We accept no responsibility for any kind of loss or damage caused by using this arrangement of software code.  We also do not provide any promises or commitment of support for said code.  It is pretty much all on you.***
 
-DNA Workflows provides a framework for packaging and running DNA Center workflows and is losely based on the python [dnacentersdk](https://dnacentersdk.readthedocs.io/en/latest/#) package.
+DNA Workflows provides a framework for packaging and running DNA Center workflows and is loosely based on the python [dnacentersdk](https://dnacentersdk.readthedocs.io/en/latest/#) package.
 
 Workflows are written in python and added to the workflows DB (Excel workbook) where workflow input data and scheduling can be managed.
 
 ## Getting Started
 
-The first thing you will need to do is clone this git respository and install the requirements using pip (Note: DNA Workflows requires Python 3).
+The first thing you will need to do is clone this git repository and install the requirements using pip (Note: DNA Workflows requires Python 3).
 
 ```
 pip3 install -r requirements.txt
 ```
 
-The ```requirements.txt``` contains the requirements need to run the workflows included weith this repository.  However it is possible that new or custom workflows will require additional packages.
+The ```requirements.txt``` contains the requirements need to run the workflows included with this repository.  However it is possible that new or custom workflows will require additional packages.
 
-Once you have cloned this repo, open up the ```dna_workflow_db.xlsx``` workflow DB.  THe first sheet **workflows** is the master workflow control sheet.  The first table defines the credentials of the DNA Center that you will be working with.  The second table is a list of 'workflows', each one referencing another workflow sheet in the workbook.  Setting the status of the workflows to ```disabled``` in this second table will ... well, disable the execution of that workflow.
+Once you have cloned this repo, open up the ```dna_workflow_db.xlsx``` workflow DB.  The first sheet **workflows** is the master workflow control sheet.  The first table defines the credentials of the DNA Center that you will be working with.  The second table is a list of 'workflows', each one referencing another workflow sheet in the workbook.  Setting the status of the workflows to ```disabled``` in this second table will ... well, disable the execution of that workflow.
 
 ![DNA Workflows - Workflow worksheet](images/workflow_screenshot.png)  
 
@@ -62,7 +62,7 @@ CUNNINGR-M-X436:dna_workflows cunningr$ python3 dna_workflows.py --noop
 2019-11-30 15:48:10,461 - main - INFO - Executing STAGE-10 workflow: reports::create_reports
 ```
 
-Take this opportunity to disable any of the workflows that may do things that you do want to do right now.  Again, we take no responsability for any bad things may happen.
+Take this opportunity to disable any of the workflows that may do things that you do want to do right now.  Again, we take no responsibility for any bad things may happen.
 
 Something you may notice from the logging output is the ```Executing STAGE-X``` log message.  Since many workflows that we want to automate when deploying DNA Center have a strict order of dependancy, the DNA Workflows framework allows you to 'schedule' workflow sub-tasks in a specified order.  Now you know what the 'Stage' column does in a workflow control table (see example screenshot above).
 
@@ -82,7 +82,7 @@ In summary;
 
 Plans for the future (contributions appreciated);
 
- * Enhance the ```add_workflow.py``` to include import, export and delete of workflows
+ * Enhance the ```add_workflow.py``` to include import and export of workflows.
 
 ## Documentation
 
@@ -96,10 +96,14 @@ You can run ```dna_workflows.py``` with the following options;
 
 ### Developing Workflows
 
-You can add a new workflow to the (default) DB using the script ```add_workflow.py```
+You can add a new workflow to the (default) DB using the script ```workflow_manager.py```
 
  * Create a new workflow template: ```--add-workflow <workflow-name>```
- * Delete a workflow from the DB: ```--delete-workflow <workflow-name>``` NOT YET IMPLEMENTED
+ * Delete a workflow from the DB: ```--delete-workflow <workflow-name>```
+ * Delete a workflow from the DB and remove the python module: ```--delete-workflow-and-clean <workflow-name>```
+ * Export a workflow to a .tar.gz file: ```--export-workflow``` (not yet implemented)
+ * Export a workflow to a new workflow DB ready to run locally: ```--export-workflow``` (not yet implemented)
+ * Import a workflow from a .tar.gz file: ```--import-workflow``` (not yet implemented)
 
 When you add a new workflow using the script, you will see;
 

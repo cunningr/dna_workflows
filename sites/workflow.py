@@ -75,4 +75,3 @@ def _get_sorted_child_list(site_db, _id):
             _site_tuple_list.append(site_tuple)
 
     return sorted(_site_tuple_list, key=lambda tup: tup[2], reverse=True)
-

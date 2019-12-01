@@ -3,9 +3,24 @@ import argparse
 import openpyxl
 from openpyxl.worksheet.table import Table, TableStyleInfo
 import os
+import shutil
 
 
 def main():
+
+    if args.add_workflow:
+        add_workflow()
+    elif args.delete_workflow:
+        module = args.delete_workflow
+        delete_module_from_excel(workflow_db, module)
+    elif args.delete_workflow_and_clean:
+        module = args.delete_workflow_and_clean
+        delete_module_from_excel(workflow_db, module)
+        remove_workflow_dir(module)
+
+
+def add_workflow():
+
     module = args.add_workflow
 
     # Create module directory
@@ -27,6 +42,15 @@ def main():
 
     # Add module to workflows DB
     add_module_to_excel(workflow_db, module)
+
+
+def remove_workflow_dir(module_dir):
+    try:
+        shutil.rmtree(module_dir)
+    except OSError as e:
+        print('Removal of the directory {} failed: {}'.format(module_dir, e))
+    else:
+        print('Successfully deleted the directory {}'.format(module_dir))
 
 
 def add_module_to_excel(workflow_db, module):
@@ -52,12 +76,26 @@ def add_module_to_excel(workflow_db, module):
         _workflow_sheet = wb['workflows']
         for table in _workflow_sheet._tables:
             if table.name == 'workflow':
-                print(get_table_length(table))
+                # print(get_table_length(table))
                 _workflow_id = get_table_length(table) + 1
                 row = [_workflow_id, 'enabled', module, 'Update this workflow documentation']
                 add_row_to_table(_workflow_sheet, table, row)
 
         wb.save(workflow_db)
+
+
+def delete_module_from_excel(workflow_db, module):
+    wb = openpyxl.load_workbook(filename=workflow_db)
+    if module not in wb.sheetnames:
+        print('module {} not found in workflow db.'.format(module))
+    else:
+        ws = wb.remove(wb[module])
+        _workflow_sheet = wb['workflows']
+        for table in _workflow_sheet._tables:
+            if table.name == 'workflow':
+                delete_row_from_table(_workflow_sheet, table, module)
+
+    wb.save(workflow_db)
 
 
 def add_row_to_table(worksheet, table, row):
@@ -71,6 +109,30 @@ def add_row_to_table(worksheet, table, row):
 
     for idx, val in enumerate(row):
         worksheet.cell(row=_table_end[1] + 1, column=_table_start[0] + idx).value = val
+
+
+def delete_row_from_table(worksheet, table, module):
+    # Find row and delete
+    _keys = []
+
+    for _column in table.tableColumns:
+        _keys.append(_column.name)
+
+    _key_index = _keys.index('Name')
+    _table_range = table.ref
+
+    for row in worksheet[_table_range]:
+        if module == row[_key_index].value:
+            worksheet.delete_rows(row[_key_index].row, 1)
+
+    # Calculate new table size
+    _table_start, _table_end = table.ref.split(':')
+    _table_start = get_cell_coordinates(_table_start)
+    _table_end = get_cell_coordinates(_table_end)
+    _new_table_end = (_table_end[0], _table_end[1] - 1)
+    _new_table_end = get_cell_ref_from_coordinate(_new_table_end)
+    _new_ref = '{}:{}'.format(table.ref.split(':')[0], _new_table_end)
+    table.ref = _new_ref
 
 
 def get_cell_coordinates(ref):
@@ -108,8 +170,13 @@ def write_to_file(path, file, data):
 workflow_db = 'dna_workflow_db.xlsx'
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--add-workflow", help="Adds a new workflow template")
-parser.add_argument("--delete-workflow", help="Deletes a workflow from the DB")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--add-workflow", help="Adds a new workflow template")
+group.add_argument("--delete-workflow", help="Deletes a workflow from the DB")
+group.add_argument("--delete-workflow-and-clean", help="Deletes a workflow from the DB and removes python modules")
+group.add_argument("--export-workflow", help="Exports a workflow from the DB and creates a .tar.gz with python modules")
+group.add_argument("--export-workflow-to-run", help="Exports a workflow from the DB to a new DB file")
+group.add_argument("--import-workflow", help="Imports a workflow from a .tar.gz workflow file")
 args = parser.parse_args()
 
 workflow_template = '''
