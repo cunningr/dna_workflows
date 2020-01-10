@@ -1,5 +1,8 @@
 import logging
 import common
+from time import sleep
+from common import report_task_completion
+from ip_pool import payload_templates as templates
 
 logger = logging.getLogger('main.ip_pool')
 pools_uri = 'api/v2/ippool'
@@ -11,26 +14,29 @@ def create_pools(api, workflow_dict):
     for key, value in workflow_dict.items():
 
         if 'native' in key:
-            _junk, _name, _key = key.split('?')
-            workflow_dict.update({_name: {'rows': value}})
-            workflow_dict.pop(key, None)
-
-            _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
+            _junk, _workflow_name, _table_name = key.split('?')
 
             # Cycle through the rows and create entries with 'present' set
-            if _name == 'ip_pools':
-                for row in workflow_dict['ip_pools']['rows']:
+            if _table_name == 'ip_pools':
+
+                _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
+
+                for row in value:
                     if 'present' in row['presence']:
-                        row.pop('presence', None)
-                        _id = common.get_object_id(_ip_pool_db['response'], _key, row[_key])
+                        _id = common.get_object_id(_ip_pool_db['response'], ipPoolName=row['ipPoolName'])
                         if _id is not None:
                             logger.info('IP Pool: {} already exists with id: {}'.format(row['ipPoolName'], _id))
                             pass
                         else:
                             logger.info('Creating IP Pool: {}'.format(row['ipPoolName']))
-                            result = api.custom_caller.call_api('POST', pools_uri, json=common.dot_to_json(row))
-                            if result['executionStatusUrl']:
-                                logger.debug(api.custom_caller.call_api('GET', result['executionStatusUrl']))
+                            data = templates.ip_pool
+                            data['ipPoolName'] = row['ipPoolName']
+                            data['ipPoolCidr'] = row['ipPoolCidr']
+
+                            result = api.custom_caller.call_api('POST', pools_uri, json=data)
+                            logger.debug(result)
+                            if result.response.taskId:
+                                common.wait_for_task_completion(api, result.response)
 
 
 def create_reservations(api, workflow_dict):
@@ -38,39 +44,46 @@ def create_reservations(api, workflow_dict):
     for key, value in workflow_dict.items():
 
         if 'native' in key:
-            _junk, _name, _key = key.split('?')
-            workflow_dict.update({_name: {'rows': value}})
-            workflow_dict.pop(key, None)
+            _junk, _workflow_name, _table_name = key.split('?')
 
-            _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
-            _sites_db = api.sites.get_site()
+            # Cycle through the rows and create entries with 'present' set
+            if _table_name == 'ip_reservations':
 
-            if _name == 'ip_groups':
-                for row in workflow_dict['ip_groups']['rows']:
+                _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
+                _sites_db = api.sites.get_site()
+
+                for row in value:
                     if 'present' in row['presence']:
-                        row.pop('presence', None)
-                        _site_id = common.get_object_id(_sites_db['response'], 'name', row['siteName'])
-                        _pool_parent_id = common.get_object_id(_ip_pool_db['response'], 'ipPoolName', row['ipPools.parent'])
+
+                        _site_id = common.get_object_id(_sites_db['response'], siteNameHierarchy=row['siteName'])
+                        _pool_parent_id = common.get_object_id(_ip_pool_db['response'], ipPoolName=row['ipPoolsParent'])
 
                         groups_uri = '{}?siteId={}'.format(groups_uri_base, _site_id)
                         _ip_groups_db = api.custom_caller.call_api('GET', groups_uri)
-                        _id = common.get_object_id(_ip_groups_db['response'], _key, row['groupName'])
+                        _id = common.get_object_id(_ip_groups_db['response'], groupName=row['groupName'])
 
-                        row.update({'siteId': _site_id})
-                        row.update({'groupOwner': 'DNAC'})
-                        row.update({'ipPools.parentUuid': _pool_parent_id})
-                        row.update({'ipPools.ipPoolOwner': 'DNAC'})
-                        row.pop('ipPools.parent', None)
+                        data = templates.ip_reservation
+                        data['siteId'] = _site_id
+                        data['ipPools'][0]['parentUuid'] = _pool_parent_id
+                        data['groupName'] = row['groupName']
+                        data['type'] = row['type']
+                        data['ipPools'][0]['ipPoolCidr'] = row['ipReservation']
+                        data['ipPools'][0]['parent'] = row['ipPoolsParent']
+                        data['ipPools'][0]['dhcpServerIps'] = row['dhcpServerIps'].split(',') if row['dhcpServerIps'] else []
+                        if len(data['ipPools'][0]['dhcpServerIps']) > 0:
+                            data['ipPools'][0]['configureExternalDhcp']: True
+                        data['ipPools'][0]['dnsServerIps'] = row['dnsServerIps'].split(',') if row['dnsServerIps'] else []
+                        data['ipPools'][0]['gateways'] = row['gateways'].split(',') if row['gateways'] else []
 
-                        row = _format_ip_pool(row)
                         if _id is not None:
                             logger.info('Reservation: {} already exists with id: {}'.format(row['groupName'], _id))
                             pass
                         else:
                             logger.info('Creating IP Reservation: {}'.format(row['groupName']))
-                            result = api.custom_caller.call_api('POST', groups_uri_base, json=common.dot_to_json(row))
-                            if result['executionStatusUrl']:
-                                logger.debug(api.custom_caller.call_api('GET', result['executionStatusUrl']))
+                            result = api.custom_caller.call_api('POST', groups_uri_base, json=data)
+                            logger.debug(result)
+                            if result.response.taskId:
+                                common.wait_for_task_completion(api, result.response)
 
 
 def delete_reservations(api, delete_workflow_dict):
@@ -78,72 +91,60 @@ def delete_reservations(api, delete_workflow_dict):
     for key, value in delete_workflow_dict.items():
 
         if 'native' in key:
-            _junk, _name, _key = key.split('?')
-            delete_workflow_dict.update({_name: {'rows': value}})
-            delete_workflow_dict.pop(key, None)
+            _junk, _workflow_name, _table_name = key.split('?')
 
-            _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
-            _sites_db = api.sites.get_site()
-            logger.debug('******** _ip_pool_db *********')
-            logger.debug(_ip_pool_db)
-            logger.debug('******** _sites_db *********')
-            logger.debug(_sites_db)
+            # Cycle through the rows and create entries with 'present' set
+            if _table_name == 'ip_reservations':
 
-            if _name == 'ip_groups':
-                for row in delete_workflow_dict['ip_groups']['rows']:
+                _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
+                _sites_db = api.sites.get_site()
+                logger.debug('******** _ip_pool_db *********')
+                logger.debug(_ip_pool_db)
+                logger.debug('******** _sites_db *********')
+                logger.debug(_sites_db)
+
+                for row in value:
                     if 'absent' in row['presence']:
-                        row.pop('presence', None)
-                        _site_id = common.get_object_id(_sites_db['response'], 'name', row['siteName'])
+                        _site_id = common.get_object_id(_sites_db['response'], siteNameHierarchy=row['siteName'])
 
                         groups_uri = '{}?siteId={}'.format(groups_uri_base, _site_id)
                         _ip_groups_db = api.custom_caller.call_api('GET', groups_uri)
-                        _id = common.get_object_id(_ip_groups_db['response'], _key, row['groupName'])
+                        _id = common.get_object_id(_ip_groups_db['response'], groupName=row['groupName'])
 
                         if _id is not None:
                             logger.info('Releasing reservation: {} with id: {}'.format(row['groupName'], _id))
                             delete_uri = '{}/{}'.format(groups_uri_base, _id)
                             result = api.custom_caller.call_api('DELETE', delete_uri)
-                            if result['executionStatusUrl']:
-                                logger.debug(api.custom_caller.call_api('GET', result['executionStatusUrl']))
+                            logger.debug(result)
+                            if result.response.taskId:
+                                common.wait_for_task_completion(api, result.response)
 
 
-def delete_pools(api, delete_workflow_dict):
+def delete_pools(api, workflow_dict):
     logger.info('ip_pool::delete_pools')
-    for key, value in delete_workflow_dict.items():
+    for key, value in workflow_dict.items():
         if 'native' in key:
-            _junk, _name, _key = key.split('?')
-            delete_workflow_dict.update({_name: {'rows': value}})
-            delete_workflow_dict.pop(key, None)
+            _junk, _workflow_name, _table_name = key.split('?')
 
-            _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
-            logger.debug('******** _ip_pool_db *********')
-            logger.debug(_ip_pool_db)
+            # Cycle through the rows and create entries with 'present' set
+            if _table_name == 'ip_pools':
 
-            if _name == 'ip_pools':
-                for row in delete_workflow_dict['ip_pools']['rows']:
+                _ip_pool_db = api.custom_caller.call_api('GET', pools_uri)
+                logger.debug(_ip_pool_db)
+
+                for row in value:
                     _sites_db = api.sites.get_site()
                     if 'absent' in row['presence']:
-                        _id = common.get_object_id(_ip_pool_db['response'], _key, row[_key])
+                        _id = common.get_object_id(_ip_pool_db['response'], ipPoolName=row['ipPoolName'])
                         if _id is not None:
                             logger.info('Deleting: {} with id: {}'.format(row['ipPoolName'], _id))
                             _delete_uri = '{}/{}'.format(pools_uri, _id)
                             result = api.custom_caller.call_api('DELETE', _delete_uri, json=common.dot_to_json(row))
-                            if result['executionStatusUrl']:
-                                logger.debug(api.custom_caller.call_api('GET', result['executionStatusUrl']))
 
-        else:
-            continue
+                            if result.response.taskId:
+                                common.wait_for_task_completion(api, result.response)
+            else:
+                continue
 
 
 # Local functions
-def _format_ip_pool(record):
-    record['ipPools.dhcpServerIps'] = record['ipPools.dhcpServerIps'].split(',') if record['ipPools.dhcpServerIps'] else []
-    record['ipPools.dnsServerIps'] = record['ipPools.dnsServerIps'].split(',') if record['ipPools.dnsServerIps'] else []
-    record['ipPools.gateways'] = record['ipPools.gateways'].split(',') if record['ipPools.gateways'] else []
-    record = common.dot_to_json(record)
-    # print(record['ipPools'])
-    record['ipPools'] = [record['ipPools']]
-    # print(record)
-    return record
-
-

@@ -101,8 +101,8 @@ You can add a new workflow to the (default) DB using the script ```workflow_mana
  * Create a new workflow template: ```--add-workflow <workflow-name>```
  * Delete a workflow from the DB: ```--delete-workflow <workflow-name>```
  * Delete a workflow from the DB and remove the python module: ```--delete-workflow-and-clean <workflow-name>```
- * Export a workflow to a .tar.gz file: ```--export-workflow``` (not yet implemented)
- * Export a workflow to a new workflow DB ready to run locally: ```--export-workflow``` (not yet implemented)
+ * Export a workflow to a .tar.gz file: ```--export-workflow```
+ * Export a workflow to a new workflow DB ready to run locally: ```--export-workflow```
  * Import a workflow from a .tar.gz file: ```--import-workflow``` (not yet implemented)
 
 When you add a new workflow using the script, you will see;
@@ -112,6 +112,55 @@ When you add a new workflow using the script, you will see;
  3. A new folder with basic 'Hello-World' workflow code.
 
 Immediately after adding a new workflow, you should be able to execute ```python3 dna_workflows.py --noop``` and see your new workflow being staged for execution.
+
+### Passing data to your Workflow
+
+Data is automatically extracted from the workflow DB and passed into your workflow for you along with the authenticated dnacentersdk api class instance.
+
+Each workflow in the DB has its own worksheet which must, at a minimum, contain the control table.
+
+**Note: Tables in Excel are a named range of cells**
+
+So see the name of a table in Excel, click anywhere in the table and then navigate to the *Table* menu option (this option only appears when you highlight a cell within a defined table).
+
+![DNA Workflows - Excel Tables Demo](./images/tables_screnshot.png)
+
+To create a new table, simply define you data in a new area of the worksheet, highlight all the cells and then do *Insert -> Table*.  You will need to provide headers for each of your columns as the column names will provide the dictionary *key* for each row when the table is imported into DNA Workflows.
+
+Each of your tables will be identified using a dictionary key equal to the Excel table name.
+
+Sample Code: Finding each table in the workflow_db
+
+```
+import logging
+import common
+
+logger = logging.getLogger('main.passing_data')
+
+
+def hello_world(api, workflow_dict):
+    logger.info('passing_data::hello_world')
+    for key, value in workflow_dict.items():
+        logger.info('Found table: {} with rows: '.format(key))
+        for row in value:
+            logger.info('{}'.format(row))
+```
+
+![DNA Workflows - Excel Tables Demo](./images/table_demo.png)
+
+Sample output:
+
+```
+2019-12-19 08:53:55,583 - main - INFO - Executing STAGE-1 workflow: passing_data::hello_world
+2019-12-19 08:53:55,587 - main.passing_data - INFO - passing_data::hello_world
+2019-12-19 08:53:55,587 - main.passing_data - INFO - Found table: control?passing_data?Function with rows:
+2019-12-19 08:53:55,587 - main.passing_data - INFO - {'Stage': 1, 'Status': 'enabled', 'Function': 'hello_world', 'Documentation': 'Prints Hello World!!', 'workflow': 'passing_data'}
+2019-12-19 08:53:55,587 - main.passing_data - INFO - Found table: native?test_data?key1 with rows:
+2019-12-19 08:53:55,588 - main.passing_data - INFO - {'key1': 'row1', 'key2': 'row1', 'key3': 'row1', 'key4': 'row1'}
+2019-12-19 08:53:55,588 - main.passing_data - INFO - {'key1': 'row2', 'key2': 'row2', 'key3': 'row2', 'key4': 'row2'}
+2019-12-19 08:53:55,588 - main.passing_data - INFO - {'key1': 'row3', 'key2': 'row3', 'key3': 'row3', 'key4': 'row3'}
+2019-12-19 08:53:55,588 - main.passing_data - INFO - {'key1': 'row4', 'key2': 'row4', 'key3': 'row4', 'key4': 'row4'}
+```
 
 ### How it works
 

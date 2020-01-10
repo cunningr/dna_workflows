@@ -9,6 +9,7 @@ import common
 # Settings
 urllib3.disable_warnings()
 
+
 def main():
 
     workflow_funcs = []
@@ -28,8 +29,16 @@ def main():
 def build_workflow_schedule(workflow_func):
 
     _func_tuple_list = []
+
     for _func in workflow_func:
-        _func_tuple = (_func['Stage'], _func['Status'], _func['workflow'], _func['Function'])
+        if 'Function' in _func.keys():
+            logger.warning(
+                'key "Function" use in workflow control table "{}" will be deprecated.  Please use "Task" instead.'.format(_func['workflow'])
+            )
+            _func_tuple = (_func['Stage'], _func['Status'], _func['workflow'], _func['Function'])
+        elif 'Task' in _func.keys():
+            _func_tuple = (_func['Stage'], _func['Status'], _func['workflow'], _func['Task'])
+
         _func_tuple_list.append(_func_tuple)
 
     return sorted(_func_tuple_list, key=lambda tup: tup[0])
@@ -55,6 +64,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--db", help=".xlsx file to use as the db")
 parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
 parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
+parser.add_argument("--offline", action='store_true', help="Creates a 'dummy' api object, useful for workflow development")
 args = parser.parse_args()
 
 # Set db file
@@ -82,7 +92,12 @@ password = workflow_db['workflows']['api_creds'][0]['password']
 base_url = workflow_db['workflows']['api_creds'][0]['base_url']
 version = workflow_db['workflows']['api_creds'][0]['api_version']
 verify = workflow_db['workflows']['api_creds'][0]['verify']
-api = DNACenterAPI(base_url=base_url, version=version, username=username, password=password, verify=verify)
+
+if args.offline:
+    api = None
+else:
+    api = DNACenterAPI(base_url=base_url, version=version, username=username, password=password, verify=verify)
+
 
 if __name__ == "__main__":
     main()

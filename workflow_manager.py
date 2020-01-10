@@ -4,19 +4,76 @@ import openpyxl
 from openpyxl.worksheet.table import Table, TableStyleInfo
 import os
 import shutil
+import tarfile
+import re
 
 
 def main():
 
     if args.add_workflow:
+        check_wf_name_format(args.add_workflow)
         add_workflow()
     elif args.delete_workflow:
+        check_wf_name_format(args.delete_workflow)
         module = args.delete_workflow
         delete_module_from_excel(workflow_db, module)
     elif args.delete_workflow_and_clean:
+        check_wf_name_format(args.delete_workflow_and_clean)
         module = args.delete_workflow_and_clean
         delete_module_from_excel(workflow_db, module)
         remove_workflow_dir(module)
+    elif args.export_workflow:
+        check_wf_name_format(args.export_workflow)
+        module = args.export_workflow
+        copy_workflow_sheet_to_new_wb(module)
+        add_workflow_to_archive(module)
+    elif args.export_workflow_to_run:
+        check_wf_name_format(args.export_workflow_to_run)
+        module = args.export_workflow
+        copy_workflow_sheet_to_new_wb(module)
+
+
+def check_wf_name_format(_name):
+    re1 = re.compile(r"[<>/{}[\]~`-]");
+    if re1.search(_name):
+        print('Illegal character in workflow name')
+        exit()
+    else:
+        return
+
+
+def add_workflow_to_archive(module_name):
+    db_filename = '{}_db.xlsx'.format(module_name)
+    archive_filename = '{}.tar.gz'.format(module_name)
+    with tarfile.open(archive_filename, "w:gz") as tar:
+        tar.add(module_name, arcname=os.path.basename(module_name))
+        tar.add(db_filename)
+    os.remove(db_filename)
+
+
+def copy_workflow_sheet_to_new_wb(module_name):
+    # Make a copy of the existing DB
+    new_db_filename = '{}_db.xlsx'.format(module_name)
+    wb = openpyxl.load_workbook(filename=workflow_db)
+    wb.save(new_db_filename)
+
+    # Remove all the other workflows
+    wb = openpyxl.load_workbook(filename=new_db_filename)
+    for worksheet in wb.sheetnames:
+        if module_name in worksheet or 'workflows' in worksheet or 'control' in worksheet:
+            pass
+        else:
+            delete_module_from_excel(new_db_filename, worksheet)
+
+    wb.save(new_db_filename)
+
+    wb = openpyxl.load_workbook(filename=new_db_filename)
+    for worksheet in wb.sheetnames:
+
+        if module_name in worksheet or 'workflows' in worksheet or 'control' in worksheet:
+            pass
+        else:
+            delete_module_from_excel(new_db_filename, worksheet)
 
 
 def add_workflow():
@@ -89,7 +146,7 @@ def delete_module_from_excel(workflow_db, module):
     if module not in wb.sheetnames:
         print('module {} not found in workflow db.'.format(module))
     else:
-        ws = wb.remove(wb[module])
+        wb.remove(wb[module])
         _workflow_sheet = wb['workflows']
         for table in _workflow_sheet._tables:
             if table.name == 'workflow':
@@ -187,7 +244,7 @@ logger = logging.getLogger('main.{{ module }}')
 
 
 def hello_world(api, workflow_dict):
-    logger.info('reports::hello_world')
+    logger.info('{{ module }}::hello_world')
     for key, value in workflow_dict.items():
         logger.info('Found table: {} with rows: '.format(key))
         for row in value:

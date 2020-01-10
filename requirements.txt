@@ -3,3 +3,4 @@ ipaddress
 argparse
 dnacentersdk
 openpyxl
+requests

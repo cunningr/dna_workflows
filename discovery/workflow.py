@@ -16,7 +16,7 @@ def create_global_credentials(api, workflow_dict):
             for row in value:
                 if 'present' in row['presence'] and 'writeCommunity' in row.keys():
                     _creds = api.network_discovery.get_global_credentials('SNMPV2_WRITE_COMMUNITY')
-                    _id = common.get_object_id(_creds['response'], _key, row[_key])
+                    _id = common.get_object_id(_creds['response'], description=row[_key])
                     if _id is not None:
                         logger.info('SNMPV2_WRITE_COMMUNITY exists with id: {}'.format(_id))
                     else:
@@ -24,7 +24,7 @@ def create_global_credentials(api, workflow_dict):
                         logger.debug(api.custom_caller.call_api('GET', result['response']['url']))
                 elif 'present' in row['presence'] and 'readCommunity' in row.keys():
                     _creds = api.network_discovery.get_global_credentials('SNMPV2_READ_COMMUNITY')
-                    _id = common.get_object_id(_creds['response'], _key, row[_key])
+                    _id = common.get_object_id(_creds['response'], description=row[_key])
                     if _id is not None:
                         logger.info('SNMPV2_READ_COMMUNITY exists with id: {}'.format(_id))
                     else:
@@ -32,7 +32,7 @@ def create_global_credentials(api, workflow_dict):
                         logger.debug(api.custom_caller.call_api('GET', result['response']['url']))
                 elif 'present' in row['presence'] and 'username' in row.keys():
                     _creds = api.network_discovery.get_global_credentials('CLI')
-                    _id = common.get_object_id(_creds['response'], _key, row[_key])
+                    _id = common.get_object_id(_creds['response'], description=row[_key])
                     if _id is not None:
                         logger.info('CLI exists with id: {}'.format(_id))
                     else:
@@ -51,7 +51,7 @@ def delete_global_credentials(api, workflow_dict):
             for row in value:
                 if 'absent' in row['presence'] and 'writeCommunity' in row.keys():
                     _creds = api.network_discovery.get_global_credentials('SNMPV2_WRITE_COMMUNITY')
-                    _id = common.get_object_id(_creds['response'], _key, row[_key])
+                    _id = common.get_object_id(_creds['response'], description=row[_key])
                     if _id is not None:
                         logger.info('Deleting SNMPV2_WRITE_COMMUNITY with id: {}'.format(_id))
                         api.network_discovery.delete_global_credentials_by_id(_id)
@@ -59,7 +59,7 @@ def delete_global_credentials(api, workflow_dict):
                         logger.info('SNMPV2_WRITE_COMMUNITY with description "{}" does not exist'.format(_id))
                 elif 'absent' in row['presence'] and 'readCommunity' in row.keys():
                     _creds = api.network_discovery.get_global_credentials('SNMPV2_READ_COMMUNITY')
-                    _id = common.get_object_id(_creds['response'], _key, row[_key])
+                    _id = common.get_object_id(_creds['response'], description=row[_key])
                     if _id is not None:
                         logger.info('Deleting SNMPV2_READ_COMMUNITY with id: {}'.format(_id))
                         api.network_discovery.delete_global_credentials_by_id(_id)
@@ -67,7 +67,7 @@ def delete_global_credentials(api, workflow_dict):
                         logger.info('SNMPV2_READ_COMMUNITY with description "{}" does not exist'.format(_id))
                 elif 'absent' in row['presence'] and 'username' in row.keys():
                     _creds = api.network_discovery.get_global_credentials('CLI')
-                    _id = common.get_object_id(_creds['response'], _key, row[_key])
+                    _id = common.get_object_id(_creds['response'], description=row[_key])
                     if _id is not None:
                         logger.info('Deleting CLI with id: {}'.format(_id))
                         api.network_discovery.delete_global_credentials_by_id(_id)
@@ -89,15 +89,15 @@ def run_discovery(api, workflow_dict):
                     _creds = []
 
                     _cli = api.network_discovery.get_global_credentials('CLI')
-                    _id = common.get_object_id(_cli['response'], 'description', row['cli'])
+                    _id = common.get_object_id(_cli['response'], description=row['cli'])
                     _creds.append(_id)
 
                     _cli = api.network_discovery.get_global_credentials('SNMPV2_READ_COMMUNITY')
-                    _id = common.get_object_id(_cli['response'], 'description', row['snmp_ro'])
+                    _id = common.get_object_id(_cli['response'], description=row['snmp_ro'])
                     _creds.append(_id)
 
                     _cli = api.network_discovery.get_global_credentials('SNMPV2_WRITE_COMMUNITY')
-                    _id = common.get_object_id(_cli['response'], 'description', row['snmp_rw'])
+                    _id = common.get_object_id(_cli['response'], description=row['snmp_rw'])
                     _creds.append(_id)
 
                     _discovery_range = '{}-{}'.format(row['startIp'], row['endIp'])
@@ -115,7 +115,8 @@ def run_discovery(api, workflow_dict):
 
                     logger.info('Adding discovery ... ')
                     result = api.network_discovery.start_discovery(payload=_discovery)
-                    logger.info(result)
+                    common.wait_for_task_completion(api, result['response'])
+                    logger.debug(result)
 
 
 def delete_discovery(api, workflow_dict):
@@ -130,7 +131,7 @@ def delete_discovery(api, workflow_dict):
                 logger.info(_name)
                 if 'absent' in row['presence'] and _name == 'discovery':
                     _discovery = api.custom_caller.call_api('GET', '/api/v1/discovery/1/10')
-                    _id = common.get_object_id(_discovery['response'], _key, row[_key])
+                    _id = common.get_object_id(_discovery['response'], name=row[_key])
                     if _id is not None:
                         logger.info('Deleting discovery with id: {}'.format(_id))
                         api.network_discovery.delete_discovery_by_id(_id)
