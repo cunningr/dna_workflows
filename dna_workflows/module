@@ -1,0 +1,26 @@
+---
+module:
+  name: &module "wf_engine"
+  author: &author "cunningr@cisco.com"
+  description: "DNA Workflows engine workflow module"
+  schemas:
+    workflow:
+      description: 'Please ''enable'' the required workflow tasks in the table below:'
+      properties:
+        status:
+          enum: ['enabled', 'disabled']
+          type: string
+        stage:
+          type: number
+        module:
+          type: string
+        task:
+          type: string
+        api:
+          description: Select API type
+          enum: ['dnacentersdk']
+          type: string
+        author:
+          type: string
+        description:
+          type: string
