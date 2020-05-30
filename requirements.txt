@@ -3,4 +3,8 @@ ipaddress
 argparse
 dnacentersdk
 openpyxl
+sdtables
+jsonschema
 requests
+netaddr
+pyyaml

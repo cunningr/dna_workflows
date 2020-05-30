@@ -1,102 +1,125 @@
-import tables
-import copy
-import urllib3
+import yaml
+import json
 import argparse
-from dnacentersdk import DNACenterAPI
-import logging
-import common
+import os
+import requests
+from pathlib import Path
+import wf_engine
+from wf_engine import schema_tools
 
-# Settings
-urllib3.disable_warnings()
+module_file_path = './.modules'
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--db", help=".xlsx file to use as the db")
+    parser.add_argument("--yaml-db", help=".yaml file to use as the db")
+    parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
+    parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
+    parser.add_argument("--offline", action='store_true',
+                        help="Creates a 'dummy' api object, useful for workflow development")
+    parser.add_argument("--dump-db-to-yaml", help="Creates an yaml file from provided *.xlsx workbook")
+    parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
+    parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
+    parser.add_argument("--incognito", action='store_true', help="Disable sending of usage statistics")
+    parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
+    args = parser.parse_args()
 
-    workflow_funcs = []
-    for workflow in workflow_db['workflows']['workflow']:
-        if 'enabled' in workflow['Status']:
-            for key, value in workflow_db[workflow['Name']].items():
-                if 'control' in key:
-                    for _func in value:
-                        _func.update({'workflow': workflow['Name']})
-                        workflow_funcs.append(_func)
+    if args.build_xlsx:
+        from wf_engine import schema_tools
+        manifest = 'manifest.yml'
+        schema = yaml.load(open(manifest, 'r'), Loader=yaml.SafeLoader)
+        wb = schema_tools.create_new_workbook()
+        wb = schema_tools.build_module_schema(wb, schema)
+        wb = schema_tools.build_workflow_task_sheet(wb, schema)
+        wb.save(args.build_xlsx)
+        exit()
 
-    execution_schedule = build_workflow_schedule(workflow_funcs)
-    for _task in execution_schedule:
-        execute_workflow(_task)
+    workflow_db = compile_workflow(args)
+    workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
+    for _row in workflow_db['workflow']:
+        _row.pop('status', None)
+        _row.pop('minimum_versions', None)
+        _row.pop('author', None)
+        _row.pop('documentation', None)
 
+    if args.dump_db_to_yaml:
+        with open(args.dump_db_to_yaml, 'w') as file:
+            yaml.dump(workflow_db, file)
 
-def build_workflow_schedule(workflow_func):
+    write_modules_manifest(workflow_db)
 
-    _func_tuple_list = []
+    if 'host' in workflow_db['options'].keys():
+        url = 'http://{}/workflow'.format(workflow_db['options']['host'])
+        r = requests.post(url, data=json.dumps(workflow_db))
+    else:
+        wf_engine.run_wf(workflow_db)
 
-    for _func in workflow_func:
-        if 'Function' in _func.keys():
-            logger.warning(
-                'key "Function" use in workflow control table "{}" will be deprecated.  Please use "Task" instead.'.format(_func['workflow'])
-            )
-            _func_tuple = (_func['Stage'], _func['Status'], _func['workflow'], _func['Function'])
-        elif 'Task' in _func.keys():
-            _func_tuple = (_func['Stage'], _func['Status'], _func['workflow'], _func['Task'])
-
-        _func_tuple_list.append(_func_tuple)
-
-    return sorted(_func_tuple_list, key=lambda tup: tup[0])
-
-
-def execute_workflow(_task):
-
-    if args.noop:
-        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task[0], _task[2], _task[3]))
-    elif _task[1] == 'enabled':
-        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task[0], _task[2], _task[3]))
-        _import = 'import {}'.format(_task[2])
-        exec(_import, globals())
-        _workflow_name = _task[2]
-        _workflow_dict = workflow_db[_workflow_name]
-        _workflow_func = _task[3]
-        _workflow = '{}.{}(api, copy.deepcopy({}))'.format(_workflow_name, _workflow_func, _workflow_dict)
-        exec(_workflow)
+    if not args.persist_module_manifest:
+        if os.path.isfile(module_file_path):
+            os.remove(module_file_path)
 
 
-# Check for args
-parser = argparse.ArgumentParser()
-parser.add_argument("--db", help=".xlsx file to use as the db")
-parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
-parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
-parser.add_argument("--offline", action='store_true', help="Creates a 'dummy' api object, useful for workflow development")
-args = parser.parse_args()
+def compile_workflow(args):
 
-# Set db file
-if args.db:
-    workflow_db = tables.load_xl_db(args.db)
-else:
-    workflow_db = tables.load_xl_db('dna_workflow_db.xlsx')
+    # Set db file
+    options = {}
+    if args.db and args.yaml_db:
+        print('WARNING: Only single source of data is allowed. Selecting provided *.xlsx file.')
+        excel_db = args.db
+    elif args.db:
+        excel_db = args.db
+    else:
+        excel_db = 'dna_workflow_db.xlsx'
 
-# Setup logging
-if args.debug:
-    level = logging.getLevelName('DEBUG')
-else:
-    level = logging.getLevelName('INFO')
+    if args.yaml_db:
+        _workflow_db = yaml.load(open(args.yaml_db, 'r'), Loader=yaml.SafeLoader)
+    else:
+        _workflow_db = schema_tools.load_xl_wf_db(excel_db, flatten=True)
 
-logger = logging.getLogger('main')
-logger.setLevel(level)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-logger.propagate = False
+    # Build options for workflow_db
+    if args.offline:
+        _workflow_db.update({'api_creds': {'offline': True}})
+    else:
+        api_creds = load_credentials()
+        _workflow_db.update({'api_creds': api_creds})
 
-username = workflow_db['workflows']['api_creds'][0]['username']
-password = workflow_db['workflows']['api_creds'][0]['password']
-base_url = workflow_db['workflows']['api_creds'][0]['base_url']
-version = workflow_db['workflows']['api_creds'][0]['api_version']
-verify = workflow_db['workflows']['api_creds'][0]['verify']
+    if args.debug: options.update({'logging': 'DEBUG'})
+    if args.noop: options.update({'noop': True})
+    if args.incognito: options.update({'incognito': True})
+    if args.host: options.update({'host': args.host})
+    _workflow_db.update({'options': options})
 
-if args.offline:
-    api = None
-else:
-    api = DNACenterAPI(base_url=base_url, version=version, username=username, password=password, verify=verify)
+    # if args.dump_db_to_yaml:
+    #     with open(args.dump_db_to_yaml, 'w') as file:
+    #         yaml.dump(_workflow_db, file)
+
+    return _workflow_db
+
+
+def write_modules_manifest(_workflow_db):
+    wf_modules = {'modules': {}}
+    for task in _workflow_db['workflow']:
+        if task['module'] not in wf_modules['modules'].keys():
+            wf_modules['modules'].update({task['module']: []})
+        wf_modules['modules'][task['module']].append(task['task'])
+
+    with open(module_file_path, 'w') as modules:
+        modules.write(json.dumps(wf_modules, indent=4))
+
+
+def load_credentials():
+    _home_creds = '{}/.dna_workflows/credentials'.format(str(Path.home()))
+
+    if os.path.isfile('./credentials'):
+        _creds = yaml.load(open('./credentials', 'r'), Loader=yaml.SafeLoader)
+        return _creds
+    elif os.path.isfile(_home_creds):
+        _creds = yaml.load(open(_home_creds, 'r'), Loader=yaml.SafeLoader)
+        return _creds
+    else:
+        print('Unable to find credentials in either ./credentials or ~/.dna_workflows/credentials')
+        exit()
 
 
 if __name__ == "__main__":
