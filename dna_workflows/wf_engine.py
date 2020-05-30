@@ -1,4 +1,3 @@
-import cx_usage_stats
 import yaml
 import copy
 import urllib3
@@ -28,37 +27,6 @@ def run_wf(_workflow_db):
     execution_schedule = build_workflow_schedule(wf_tasks)
     for _task in execution_schedule:
         execute_workflow(_task, api, _workflow_db)
-
-    if not get_options(_workflow_db, 'incognito'):
-        usage, stats = build_usage_stats(wf_tasks, '')
-        post_tool_stats(usage, stats)
-
-
-def build_usage_stats(tasks, statistics):
-    logger.debug('RAW FUNCTIONS DAT:')
-    logger.debug(tasks)
-
-    usage = []
-    for row in tasks:
-        task = '{}::{}'.format(row['module'], row['task'])
-        usage.append({task: 'ENABLED'})
-
-    stats = {'summary_count': '0'}
-    return usage, stats
-
-
-def post_tool_stats(usage, stats):
-    tool_usage_url = "http://cx-emear-tools-stats.cisco.com/submit_tool_usage"
-    submit_result = cx_usage_stats.submit_usage_data("DnaWorkflows", tool_usage_url, usage, stats)
-
-    logger.debug(submit_result)
-
-    if submit_result["upload_status"] == "Success":
-        message = "Usage statistics successfully submitted"
-        logger.info(message)
-    else:
-        message = "Failure during submission of usage statistics (can safely be ignored)"
-        logger.info(message)
 
 
 def build_workflow_schedule(wf_tasks):

@@ -1,5 +1,7 @@
 site/
 *.pyc
+MANIFEST
+dist/
 
 # OS generated files #
 ######################
