@@ -1,12 +1,16 @@
+#!/usr/bin/env python3
+
+import sys
 import yaml
 import json
 import argparse
 import os
 import requests
 from pathlib import Path
-import wf_engine
-from wf_engine import schema_tools
+from dna_workflows import wf_engine
+from dna_workflows import schema_tools
 
+sys.path.append(os.getcwd())
 module_file_path = './.modules'
 
 
@@ -26,7 +30,7 @@ def main():
     args = parser.parse_args()
 
     if args.build_xlsx:
-        from wf_engine import schema_tools
+        from dna_workflows import schema_tools
         manifest = 'manifest.yml'
         schema = yaml.load(open(manifest, 'r'), Loader=yaml.SafeLoader)
         wb = schema_tools.create_new_workbook()

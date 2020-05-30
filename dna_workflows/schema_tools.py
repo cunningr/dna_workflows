@@ -83,7 +83,7 @@ def build_workflow_task_sheet(_wb, _schema):
 
     _ws = _wb.create_sheet("workflows", 0)
     _ws.sheet_properties.tabColor = "0080FF"
-    import wf_engine
+    from dna_workflows import wf_engine
     wf_doc = wf_engine.get_module_definition()
     wf_schema = wf_doc['module']['schemas']['workflow']
     sdtables.add_schema_table_to_worksheet(_ws, 'workflow', wf_schema, data=methods, table_style='TableStyleLight14')
