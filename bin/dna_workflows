@@ -16,8 +16,9 @@ module_file_path = './.modules'
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--db", help=".xlsx file to use as the db")
-    parser.add_argument("--yaml-db", help=".yaml file to use as the db")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--db", help=".xlsx file to use as the db")
+    group.add_argument("--yaml-db", help=".yaml file to use as the db")
     parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
     parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
     parser.add_argument("--offline", action='store_true',
@@ -69,17 +70,12 @@ def compile_workflow(args):
     # Set db file
     options = {}
     if args.db and args.yaml_db:
-        print('WARNING: Only single source of data is allowed. Selecting provided *.xlsx file.')
-        excel_db = args.db
-    elif args.db:
-        excel_db = args.db
-    else:
-        excel_db = 'dna_workflow_db.xlsx'
+        print('WARNING: Only single source of data is allowed. YAML db file will be used.')
 
     if args.yaml_db:
         _workflow_db = yaml.load(open(args.yaml_db, 'r'), Loader=yaml.SafeLoader)
     else:
-        _workflow_db = schema_tools.load_xl_wf_db(excel_db, flatten=True)
+        _workflow_db = schema_tools.load_xl_wf_db(args.db, flatten=True)
 
     # Build options for workflow_db
     if args.offline:
