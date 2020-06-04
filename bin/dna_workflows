@@ -16,15 +16,15 @@ module_file_path = './.modules'
 
 def main():
     parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument("--db", help=".xlsx file to use as the db")
     group.add_argument("--yaml-db", help=".yaml file to use as the db")
-    parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
+    parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
     parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
     parser.add_argument("--offline", action='store_true',
                         help="Creates a 'dummy' api object, useful for workflow development")
     parser.add_argument("--dump-db-to-yaml", help="Creates an yaml file from provided *.xlsx workbook")
-    parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
+    parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
     parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
     parser.add_argument("--incognito", action='store_true', help="Disable sending of usage statistics")
     parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
@@ -74,8 +74,10 @@ def compile_workflow(args):
 
     if args.yaml_db:
         _workflow_db = yaml.load(open(args.yaml_db, 'r'), Loader=yaml.SafeLoader)
-    else:
+    elif args.db:
         _workflow_db = schema_tools.load_xl_wf_db(args.db, flatten=True)
+    else:
+        _workflow_db = {'workflow': [{'stage': '1', 'module': 'noop', 'task': 'noop', 'api': 'noop'}]}
 
     # Build options for workflow_db
     if args.offline:

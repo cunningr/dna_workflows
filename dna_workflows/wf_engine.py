@@ -19,14 +19,22 @@ def get_module_definition():
 
 
 def run_wf(_workflow_db):
-    api = run_setup(_workflow_db)
-    # workflow_mods = []
+    apis = run_setup(_workflow_db)
 
     wf_tasks = _workflow_db['workflow']
 
     execution_schedule = build_workflow_schedule(wf_tasks)
     for _task in execution_schedule:
-        execute_workflow(_task, api, _workflow_db)
+        _task_api = _task[3]
+        if _task_api in apis.keys():
+            api = apis[_task_api]
+            execute_task(_task, api, _workflow_db)
+        elif 'offline' in apis.keys():
+            api = 'offline'
+            execute_task(_task, api, _workflow_db)
+        else:
+            logger.error('api: {} or workflow not found.  Please check your credentials file'.format(_task_api))
+            exit()
 
 
 def build_workflow_schedule(wf_tasks):
@@ -34,14 +42,14 @@ def build_workflow_schedule(wf_tasks):
 
     for _func in wf_tasks:
         if 'task' in _func.keys():
-            _func_tuple = (_func['stage'], _func['module'], _func['task'])
+            _func_tuple = (_func['stage'], _func['module'], _func['task'], _func['api'])
 
         _func_tuple_list.append(_func_tuple)
 
     return sorted(_func_tuple_list, key=lambda tup: tup[0])
 
 
-def execute_workflow(_task, api, _workflow_db):
+def execute_task(_task, api, _workflow_db):
     # Only modules and tasks defined in the module manifest will be loaded/executed
     try:
         with open(module_file_path) as json_file:
@@ -61,7 +69,7 @@ def execute_workflow(_task, api, _workflow_db):
     else:
         options = {}
 
-    if 'noop' in options.keys() or api is None:
+    if 'noop' in options.keys() or 'offline' == api:
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task_stage, _task_workflow, _task_name))
     else:
 
@@ -108,17 +116,16 @@ def run_setup(_workflow_db):
     logger.addHandler(ch)
     logger.propagate = False
 
-    if 'dnacentersdk' in _workflow_db['api_creds'].keys():
-        username = _workflow_db['api_creds']['dnacentersdk']['username']
-        password = _workflow_db['api_creds']['dnacentersdk']['password']
-        base_url = _workflow_db['api_creds']['dnacentersdk']['base_url']
-        version = _workflow_db['api_creds']['dnacentersdk']['api_version']
-        verify = str(_workflow_db['api_creds']['dnacentersdk']['verify']).lower() in ['true']
-
+    api = {}
     if 'offline' in _workflow_db['api_creds'].keys():
-        api = None
+        api = {'offline': True}
     else:
-        api = DNACenterAPI(base_url=base_url, version=version, username=username, password=password, verify=verify)
+        if 'dnacentersdk' in _workflow_db['api_creds'].keys():
+            _sdk = sdk_setup_dnacentersdk(_workflow_db['api_creds'])
+            api.update({'dnacentersdk': _sdk})
+        else:
+            logger.error('No valid SDK credentials found')
+            exit()
 
     return api
 
@@ -134,3 +141,20 @@ def get_options(_workflow_db, option):
         return options[option]
     else:
         return None
+
+
+def sdk_setup_dnacentersdk(api_creds):
+    try:
+        username = api_creds['dnacentersdk']['username']
+        password = api_creds['dnacentersdk']['password']
+        base_url = api_creds['dnacentersdk']['base_url']
+        version = api_creds['dnacentersdk']['api_version']
+        verify = str(api_creds['dnacentersdk']['verify']).lower() in ['true']
+        print(api_creds)
+        api = DNACenterAPI(base_url=base_url, version=version, username=username, password=password, verify=verify)
+        logger.info('API connectivity established with dnacentersdk')
+        return api
+    except Exception as e:
+        logger.error('error connecting to dnacentersdk.  Please verify connectivity, username and password')
+        logger.error(e)
+        exit()
