@@ -95,17 +95,17 @@ This will create a new MS Excel file that contains a ```workflows``` worksheet a
 
 ## Building a Workflow
 
-On the 'workflows' worksheet you will find a table called 'workflow'.  By default the ```example_module``` module schema will set all the 'tasks' too 'disabled'.  Before enabling them, be aware that some of the example tasks will make changes to your system (create/delete) so please read the description and ensure you happy with the potential consequences.
+On the 'workflows' worksheet you will find a table called 'workflow'.  By default the ```example_module``` module schema will set all the 'tasks' too 'disabled'.  Before enabling them, be aware that some of the **example tasks will make changes to your system (create/delete)** so please read the description and ensure you happy with the potential consequences.
 
-So, the first thing to do is to identify the tasks you are interested in and set them to enabled.  The next thing is to decide which 'stage' of execution you want the task to run in.  Basically, execution of the tasks will happen in staged sequential order.  Multiple tasks can be scheduled to the same stage however **no guarantee of order is given within a single stage**, which is fine for some tasks, but for tasks that depend on completion of previous tasks you will want to adjust the execution stage accordingly.
+The first thing to do is to identify the tasks that you are interested in and set them to enabled.  The next thing is to decide which 'stage' of execution you want the task to run in.  Execution of the tasks will happen in staged, sequential order.  Multiple tasks can be scheduled to the same stage however **no guarantee of order is given within a single stage**, which is fine for some tasks, but for tasks that depend on completion of previous tasks you will want to adjust the execution stage accordingly.
 
 ![Example workflow](media/example_workflow_table.png)
 
-Now, moving to the example_module worksheet you will find some tables tables.  In this example there is a single table containing some user credentials.  Take note of the Excel table name;
+Now, moving to the example_module worksheet you will find some example data tables.  In this example there are three tables containing some DNA Center global credentials.  Take note of the Excel table names;
 
 ![Example schema data](media/example_module_data.png)
 
-NOTE: This table name will be used as the key to identify the table data once it is passed to the python module functions (workflow tasks) and is derived from the module schema definition.  Each table will become a list of dictionaries (one per row) with the dictionary keys taken from the table headers.
+NOTE: These table names will be used as the key to identify each table once it is passed to the workflow functions (workflow tasks) and is derived from the module schema definition (see Creating a Module).  Each table will become a list of dictionaries (one per row) with the dictionary keys taken from the table headers.
 
 If you have enabled an example task in the workflow db (Excel workbook) and saved it, you can execute the workflow like so;
 
@@ -151,7 +151,7 @@ email: cunningr@example.com
 Successfully created the directory example_module
 ```
 
-This will create the basic structure and example files for you new (python) module.  In fact, at this point you should be build the workflow db and run the skeleton hello_world task.  First create a ```manifest.yml``` file that contains the name of your new module;
+This will create the basic structure and example files for your new (python) module.  In fact, at this point you should be build the workflow db and run the skeleton hello_world task.  First create a ```manifest.yml``` file that contains the name of your new module;
 
 ```
 cat << EOF > manifest.yml
@@ -179,18 +179,18 @@ hello_world.schema.example_module
 {'presence': 'present', 'key1': 'value2', 'key2': True, 'example_tref': 'TWO'}
 ```
 
-All this ```hello_world``` example is doing if simply printing a log to identify the task and the printing out the contents of the table named ```hello_world.schema.example_module``` from the workflow db.  Yo ucan open up the ```example.xlsx``` and play around with the status of the task in the workflow sheet and contents of the tables in your new ```example_module``` worksheet.
+All this ```hello_world``` example is doing is printing a log to identify the task and then printing out the contents of the table named ```hello_world.schema.example_module``` from the workflow db.  You can open up the ```example.xlsx``` and play around with the status of the task in the workflow sheet and contents of the tables in your new ```example_module``` worksheet.
 
 ### Module Functions
 
-Module functions (also known as tasks) are essentially public python functions written by the module developer and exposed via the module schema (see Module Schema).  The entry point for any code in your module is the ```workflow.py``` python file.  Essentially you can include what code you need in here (even imports to other python modules) however your public functions that wish to expose to DNA Workflows users should take exactly two arguments, ```api```, and ```workflow_db```;
+Module functions (also known as tasks) are essentially public python functions written by the module developer and exposed via the module schema (see Module Schema).  The entry point for any code in your module is the ```workflow.py``` python file.  Essentially you can include whatever code you need in here (even imports to other python modules) however your public functions that you wish to expose to DNA Workflows users should take exactly two arguments, ```api```, and ```workflow_db```;
 
  * **api:** An API class instance from one of the integrated SDKs.
  * **workflow_db:** A python dictionary containing user data
 
 These are the only two arguments that will be passed to your function from the DNA Workflows execution engine.
 
-**HINT:** In the schema you will declare your public module functions along with the required ```api``` class.
+**HINT:** In the schema you will declare your public module functions along with the required ```api``` class (E.g. dnacentersdk, isepac et).
 
 **HINT:** In the schema you will define the format of any user input your function requires.
 
@@ -236,7 +236,7 @@ For a more complete example module please see the [DNA Workflows example_module]
 
 ### Module Schema
 
-DNA Workflows uses the ```sdtables``` modules in order to build the Excel workbook from a JSON schema (stored as YAML) and adds some additional conditional formatting.  The schema describing the module is stored along with the python code in file called ```module```.  The basic parts of the schema definition are described in the example below.
+DNA Workflows uses the [sdtables](https://github.com/cunningr/sdtables) modules in order to build the Excel workbook from a JSON schema (stored as YAML) and adds some additional conditional formatting.  The schema describing the module is stored along with the module code in a file called ```module```.  The basic parts of the schema definition are described in the example below.
 
 ```
 ---
@@ -288,6 +288,6 @@ module:
       - {'testCol1': 'THREE', 'testCol2': 'CCCC'}
 ```
 
-
+## FAQ
 
  
