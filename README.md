@@ -7,6 +7,7 @@ An example module providing a few sample tasks using the [dnacentersdk](https://
 Currently integrated SDKs
 
  * [dnacentersdk](https://dnacentersdk.readthedocs.io/en/latest/#)
+ * [ISE](https://github.com/falkowich/ise)
 
 **The code is published here for demo purposes only and has had very little scrutiny for quality or security posture.**
 
@@ -23,8 +24,8 @@ A workflow is a user defined sequence of tasks and associated data passed to the
 After installing DNA Workflows you should be able to use the script directly by typing ```dna_workflows -h``` in your shell;
 
 ```
-# dna_workflows -h
-usage: dna_workflows [-h] (--db DB | --yaml-db YAML_DB | --build-xlsx BUILD_XLSX) [--dump-db-to-yaml DUMP_DB_TO_YAML] [--debug] [--noop] [--offline] [--persist-module-manifest] [--incognito] [--host HOST]
+# dna_workflows --help
+usage: dna_workflows [-h] [--db DB | --yaml-db YAML_DB] [--build-xlsx BUILD_XLSX] [--noop] [--offline] [--dump-db-to-yaml DUMP_DB_TO_YAML] [--debug] [--persist-module-manifest] [--incognito] [--add-module-skeleton] [--host HOST]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -32,26 +33,34 @@ optional arguments:
   --yaml-db YAML_DB     .yaml file to use as the db
   --build-xlsx BUILD_XLSX
                         Builds a Excel workflow db based on the module manifest
+  --noop                Run the scheduling logic but do not execute any workflows
+  --offline             Creates a 'dummy' api object, useful for workflow development
   --dump-db-to-yaml DUMP_DB_TO_YAML
                         Creates an yaml file from provided *.xlsx workbook
   --debug               Enable debug level messages mode
-  --noop                Run the scheduling logic but do not execute any workflows
-  --offline             Creates a 'dummy' api object, useful for workflow development
   --persist-module-manifest
                         Do not clean up the .modules manifest
   --incognito           Disable sending of usage statistics
+  --add-module-skeleton
+                        Create a DNA Workflows module template
   --host HOST           Specify a host running the DNA Workflows Web App
 ```
 
-The next thing you will need is a ```credentials``` file to tell DNA Workflows how to configure the SDK and connect to your systems;
+The next thing you will need is a ```credentials``` file to tell DNA Workflows how to configure the SDKs that will connect to your systems.  You can find an example in this repository but it should look something like the below;
 
 ```
 dnacentersdk:
     api_version: "1.3.0"
     base_url: "https://10.0.0.1"
     username: "admin"
-    password: "Cisco123"
+    password: "cisco123"
     verify: False
+isepac:
+    host: '10.0.0.2'
+    username: admin
+    password: "cisco123"
+    verify: False
+    disable_warnings: True
 ```
 
 Note that the ```credentials``` file needs to be valid YAML.  Once you have updated the ```credentials``` file you can either put it in the directory where you will load/execute the module code, ```./``` or you can put it in a folder in your home dir ```~/.dna_workflows/credentials```.  We recommend the later and to adjust the permissions on the file appropriately (E.g. ```chmod 600```)
@@ -60,33 +69,225 @@ At this point you should be able to test connectivity to your API endpoint;
 
 ```
 # dna_workflows --noop
-2020-06-04 09:26:58,114 - main - INFO - API connectivity established with dnacentersdk
-2020-06-04 09:26:58,123 - main - INFO - Executing STAGE-1 workflow: noop::noop
+2020-06-05 08:54:08,992 - main - INFO - API connectivity established with dnacentersdk
+2020-06-05 08:54:08,993 - main - INFO - API connectivity established with isepac
+2020-06-05 08:54:08,999 - main - INFO - Executing STAGE-1 workflow: noop::noop
 ```
 
+Once you have validated that DNA Workflows can connect to your systems, you will import/develop some modules.  DNA Workflow modules are designed to be fairly simple to develop and extend with the primary focus being on reusability. You can find [an example module here]().  A module consists of two basic elements;
+
+ * One or more public python functions (tasks) that takes exactly two arguments;
+	 * An API class instance from one of the integrated SDKs.
+	 * A python dictionary containing user data
+ * A module schema (based on JSON schema) that describes;
+	 * The available public python functions
+	 * The format of the required user data
+
+After cloning the [example module repository]() you can build the user input Excel for the module like so;
+
+```
+dna_workflows --build-xlsx example.xlsx
+```
+
+This will create a new MS Excel file that contains a ```workflows``` worksheet and one (or more) module worksheets.  You may want to tidy up some of the column widths, but essentially your new workbook should like this;
+
+![Workflow DB Example](media/example_module_sheet.png)
+
+## Building a Workflow
+
+On the 'workflows' worksheet you will find a table called 'workflow'.  By default the ```example_module``` module schema will set all the 'tasks' too 'disabled'.  Before enabling them, be aware that some of the example tasks will make changes to your system (create/delete) so please read the description and ensure you happy with the potential consequences.
+
+So, the first thing to do is to identify the tasks you are interested in and set them to enabled.  The next thing is to decide which 'stage' of execution you want the task to run in.  Basically, execution of the tasks will happen in staged sequential order.  Multiple tasks can be scheduled to the same stage however **no guarantee of order is given within a single stage**, which is fine for some tasks, but for tasks that depend on completion of previous tasks you will want to adjust the execution stage accordingly.
+
+![Example workflow](media/example_workflow_table.png)
+
+Now, moving to the example_module worksheet you will find some tables tables.  In this example there is a single table containing some user credentials.  Take note of the Excel table name;
+
+![Example schema data](media/example_module_data.png)
+
+NOTE: This table name will be used as the key to identify the table data once it is passed to the python module functions (workflow tasks) and is derived from the module schema definition.  Each table will become a list of dictionaries (one per row) with the dictionary keys taken from the table headers.
+
+If you have enabled an example task in the workflow db (Excel workbook) and saved it, you can execute the workflow like so;
+
+```
+dna_workflows --db example.xlsx
+```
+
+NOTE: Currently you will need to execute the workflow from the same directory that module is saved in.
+
+```
+# dna_workflows --db example.xlsx
+2020-06-05 11:23:41,122 - main - INFO - API connectivity established with dnacentersdk
+2020-06-05 11:23:41,122 - main - INFO - API connectivity established with isepac
+2020-06-05 11:23:41,132 - main - INFO - Executing STAGE-1 workflow: example_module::create_global_credentials
+2020-06-05 11:23:41,132 - main - INFO - Loading module example_module
+2020-06-05 11:23:41,234 - main.example_module - INFO - example_module::create_global_credentials::snmpWrite
+2020-06-05 11:23:42,017 - main.example_module - INFO - SNMPV2_WRITE_COMMUNITY exists with id: 5dd23c23-bea5-4bf8-8510-830b7a57eadd
+2020-06-05 11:23:42,017 - main.example_module - INFO - example_module::create_global_credentials::snmpRead
+2020-06-05 11:23:42,214 - main.example_module - INFO - SNMPV2_READ_COMMUNITY exists with id: 585248e2-d8db-405a-82e5-677849d75859
+2020-06-05 11:23:42,214 - main.example_module - INFO - example_module::create_global_credentials::cli
+2020-06-05 11:23:42,411 - main.example_module - INFO - CLI exists with id: 298d11c0-79c7-4646-86d4-93ec6ad2b61a
+2020-06-05 11:23:42,417 - main - INFO - Executing STAGE-2 workflow: example_module::list_id_groups
+2020-06-05 11:23:42,418 - main.example_module - INFO - example_module::list_id_groups
+     name: GuestType_Weekly (default), uuid: 9efe2310-8c01-11e6-996c-525400b48521, description: Identity group mirroring the guest type
+     name: Network Admins, uuid: fe23b320-2026-11ea-8912-86db5f756a5e, description:
+     name: OWN_ACCOUNTS (default), uuid: a19d5f00-8c01-11e6-996c-525400b48521, description: Default OWN_ACCOUNTS (default) User Group
+     name: GROUP_ACCOUNTS (default), uuid: a1bb2030-8c01-11e6-996c-525400b48521, description: Default GROUP_ACCOUNTS (default) User Group
+     name: GuestType_SocialLogin (default), uuid: 28494140-2e58-11e9-98fb-0050568775a3, description: Identity group mirroring the guest type
+     name: Employee, uuid: a1740510-8c01-11e6-996c-525400b48521, description: Default Employee User Group
+     name: GuestType_Daily (default), uuid: 9eee92b0-8c01-11e6-996c-525400b48521, description: Identity group mirroring the guest type
+     name: GuestType_Contractor (default), uuid: 9f048bb0-8c01-11e6-996c-525400b48521, description: Identity group mirroring the guest type
+     name: ALL_ACCOUNTS (default), uuid: a176c430-8c01-11e6-996c-525400b48521, description: Default ALL_ACCOUNTS (default) User Group
+```
+
+## Creating a Module
+
+Once you have DNA Workflows installed you can create a new skeleton module using the command below;
+
+```
+# dna_workflows --add-module-skeleton
+Module name: example_module
+email: cunningr@example.com
+Successfully created the directory example_module
+```
+
+This will create the basic structure and example files for you new (python) module.  In fact, at this point you should be build the workflow db and run the skeleton hello_world task.  First create a ```manifest.yml``` file that contains the name of your new module;
+
+```
+cat << EOF > manifest.yml
+manifest:
+  - example_module
+EOF
+```
+
+Now we should be able to build the workflow DB;
+
+```
+dna_workflows --build-xlsx example.xlsx
+```
+
+and then run it like so;
+
+```
+# dna_workflows --db example.xlsx
+2020-06-05 10:22:04,923 - main - INFO - API connectivity established with dnacentersdk
+2020-06-05 10:22:04,924 - main - INFO - API connectivity established with isepac
+2020-06-05 10:22:04,931 - main - INFO - Executing STAGE-1 workflow: example_module::hello_world
+2020-06-05 10:22:04,932 - main - INFO - Loading module example_module
+2020-06-05 10:22:04,975 - main.example_module - INFO - example_module::hello_world
+hello_world.schema.example_module
+{'presence': 'present', 'key1': 'value2', 'key2': True, 'example_tref': 'TWO'}
+```
+
+All this ```hello_world``` example is doing if simply printing a log to identify the task and the printing out the contents of the table named ```hello_world.schema.example_module``` from the workflow db.  Yo ucan open up the ```example.xlsx``` and play around with the status of the task in the workflow sheet and contents of the tables in your new ```example_module``` worksheet.
+
+### Module Functions
+
+Module functions (also known as tasks) are essentially public python functions written by the module developer and exposed via the module schema (see Module Schema).  The entry point for any code in your module is the ```workflow.py``` python file.  Essentially you can include what code you need in here (even imports to other python modules) however your public functions that wish to expose to DNA Workflows users should take exactly two arguments, ```api```, and ```workflow_db```;
+
+ * **api:** An API class instance from one of the integrated SDKs.
+ * **workflow_db:** A python dictionary containing user data
+
+These are the only two arguments that will be passed to your function from the DNA Workflows execution engine.
+
+**HINT:** In the schema you will declare your public module functions along with the required ```api``` class.
+
+**HINT:** In the schema you will define the format of any user input your function requires.
+
+Below is an example ```hello_world``` DNA Workflows function;
+
+```
+import logging
+from module_name import payload_templates as templates
+import yaml
+import pkgutil
+
+logger = logging.getLogger('main.module_name')
+
+
+def get_module_definition():
+    data = pkgutil.get_data(__package__, 'module')
+    return yaml.load(data, Loader=yaml.SafeLoader)
+
+
+def hello_world(api, workflow_dict):
+    """ Prints hello_world and some test data from example schema.
+
+    :param api: An instance of the XYZ SDK class
+    :param workflow_dict: A dictionary containing rows of example data (see module);
+
+    :returns: Nothing """
+    
+    _schema = 'hello_world.schema.module_name'
+    logger.info('module_name::hello_world')
+    logger.debug('schema: {}'.format(_schema))
+
+    print(_schema)
+    if _schema in workflow_dict.keys():
+        table_data = workflow_dict[_schema]
+
+        for row in table_data:
+            print(row)
+```
+
+It is suggested that if you need to employ any complex payload templates (E.g. JSON payloads) that you use Jinja2, locating your templates in the file ```payload_templates.py``` as strings.
+
+For a more complete example module please see the [DNA Workflows example_module](https://github.com/cunningr/dna_workflows_example_module)
+
+### Module Schema
+
+DNA Workflows uses the ```sdtables``` modules in order to build the Excel workbook from a JSON schema (stored as YAML) and adds some additional conditional formatting.  The schema describing the module is stored along with the python code in file called ```module```.  The basic parts of the schema definition are described in the example below.
+
+```
 ---
-
-For this Quick Start guide you will need to ```cd``` into this git repo in order to execute the script.
-
-Next, copy or move the template ```dna_workflow_db.xlsx.org``` file to ```dna_workflow_db.xlsx```, open it up and view the sample data.  Make changes to the contents of the data tables in each worksheet module and update the enable/disable status of the tasks on the 'workflows' worksheet.  For the first run we strongly recommend executing the script in ```--noop``` mode.
-
+module:
+  name: &module "module_name"     # Module name
+  author: &author "me@example.com"    # Authors email
+  # A description of the module will be inserted at the top of the Excel worksheet
+  description: "This is default module description for module_name"
+  # A list of provided public functions (Tasks).  These are inserted into the 'workflow' table
+  methods:
+    - {"status": "enabled", "task": "hello_world", "stage": 1, "module": *module, "api": "dnacentersdk",
+       "author": *author,
+       "description": "Runs the hello world task!"
+    }
+  # A dictionary of table schemas describing the table column names.
+  # These will appear on the '<module-name>' worksheet and will create basic data validations
+  # Table names take the form <schema-name>.schema.<module-name>
+  # see https://github.com/cunningr/sdtables
+  schemas:
+    hello_world:
+      description: "Used by: hello_world"
+      properties:
+        presence:
+          type: string
+          enum: ['present', 'absent']
+        key1:
+          type: string
+          enum: ['value1', 'value2', 'value3']
+        key2:
+          type: boolean
+        example_tref:
+          type: string
+          tref: 'INDIRECT("another_table.schema.module_name[testCol1]")'
+    another_table:
+      description: "A test reference table"
+      properties:
+        testCol1:
+          type: string
+        testCol2:
+          type: string
+  # Example data to populate the above schema.
+  # In addition the data is also validated against the schema
+  data:
+    hello_world:
+      - {'presence': 'present', 'key1': 'value2', 'key2': True, 'example_tref': 'TWO'}
+    another_table:
+      - {'testCol1': 'ONE', 'testCol2': 'AAAA'}
+      - {'testCol1': 'TWO', 'testCol2': 'BBBB'}
+      - {'testCol1': 'THREE', 'testCol2': 'CCCC'}
 ```
-python3 ./dna_workflows.py --noop
-```
 
-Running in ```--noop``` mode will attempt to authenticate with your DNA Center system but it will send or receive any other data.  Instead it will provide you a report on the status of each task in the workflow database.
 
-When you are confident that the workflow database is configured how you want it, you can rerun the ```dna_workflows.py``` script without the ```--noop``` option.
 
-If you wish to save a snapshot of your workflow database you can dump the contents out to a YAML file like so;
-
-```
-python3 ./dna_workflows.py --noop --dump-db-to-yaml my_workflow_db.yml
-```
-
-and then to replay your workflow using a YAML file as your ingress database you can do;
-
-```
-python3 ./dna_workflows.py --yaml-db my_workflow_db.yml
-```
  

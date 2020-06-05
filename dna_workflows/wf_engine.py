@@ -1,11 +1,12 @@
 import yaml
 import copy
 import urllib3
-from dnacentersdk import DNACenterAPI
 import logging
 import json
 import sys
 import pkgutil
+from dnacentersdk import DNACenterAPI
+from ise import ERS
 
 # Settings
 urllib3.disable_warnings()
@@ -29,11 +30,14 @@ def run_wf(_workflow_db):
         if _task_api in apis.keys():
             api = apis[_task_api]
             execute_task(_task, api, _workflow_db)
+        elif 'noop' in _task_api:
+            api = 'noop'
+            execute_task(_task, api, _workflow_db)
         elif 'offline' in apis.keys():
             api = 'offline'
             execute_task(_task, api, _workflow_db)
         else:
-            logger.error('api: {} or workflow not found.  Please check your credentials file'.format(_task_api))
+            logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
 
 
@@ -123,6 +127,9 @@ def run_setup(_workflow_db):
         if 'dnacentersdk' in _workflow_db['api_creds'].keys():
             _sdk = sdk_setup_dnacentersdk(_workflow_db['api_creds'])
             api.update({'dnacentersdk': _sdk})
+        if 'isepac' in _workflow_db['api_creds'].keys():
+            _sdk = sdk_setup_isepac(_workflow_db['api_creds'])
+            api.update({'isepac': _sdk})
         else:
             logger.error('No valid SDK credentials found')
             exit()
@@ -150,11 +157,26 @@ def sdk_setup_dnacentersdk(api_creds):
         base_url = api_creds['dnacentersdk']['base_url']
         version = api_creds['dnacentersdk']['api_version']
         verify = str(api_creds['dnacentersdk']['verify']).lower() in ['true']
-        print(api_creds)
         api = DNACenterAPI(base_url=base_url, version=version, username=username, password=password, verify=verify)
         logger.info('API connectivity established with dnacentersdk')
         return api
     except Exception as e:
         logger.error('error connecting to dnacentersdk.  Please verify connectivity, username and password')
+        logger.error(e)
+        exit()
+
+
+def sdk_setup_isepac(api_creds):
+    try:
+        username = api_creds['isepac']['username']
+        password = api_creds['isepac']['password']
+        host = api_creds['isepac']['host']
+        verify = str(api_creds['isepac']['verify']).lower() in ['true']
+        disable_warnings = str(api_creds['isepac']['disable_warnings']).lower() in ['true']
+        api = ERS(ise_node=host, ers_user=username, ers_pass=password, verify=verify, disable_warnings=disable_warnings)
+        logger.info('API connectivity established with isepac')
+        return api
+    except Exception as e:
+        logger.error('error connecting to isepac.  Please verify connectivity, username and password')
         logger.error(e)
         exit()

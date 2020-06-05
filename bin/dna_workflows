@@ -2,6 +2,7 @@
 
 import sys
 import yaml
+from jinja2 import Template
 import json
 import argparse
 import os
@@ -27,6 +28,7 @@ def main():
     parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
     parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
     parser.add_argument("--incognito", action='store_true', help="Disable sending of usage statistics")
+    parser.add_argument("--add-module-skeleton", action='store_true', help="Create a DNA Workflows module template")
     parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
     args = parser.parse_args()
 
@@ -39,6 +41,9 @@ def main():
         wb = schema_tools.build_workflow_task_sheet(wb, schema)
         wb.save(args.build_xlsx)
         exit()
+
+    if args.add_module_skeleton:
+        create_module_skeleton()
 
     workflow_db = compile_workflow(args)
     workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
@@ -122,6 +127,47 @@ def load_credentials():
     else:
         print('Unable to find credentials in either ./credentials or ~/.dna_workflows/credentials')
         exit()
+
+
+def create_module_skeleton():
+    from dna_workflows import payload_templates
+    _module = {}
+    _module.update({'module': input('Module name: ')})
+    _module.update({'email': input('email: ')})
+
+    # Create module directory
+    try:
+        os.mkdir(_module['module'])
+    except OSError as e:
+        print('Creation of the directory {} failed: {}'.format(_module['module'], e))
+    else:
+        print('Successfully created the directory {}'.format(_module['module']))
+
+    # Write module template files
+    tm = Template(payload_templates.workflow_j2)
+    output = tm.render(item=_module)
+    write_to_file(_module['module'], 'workflow.py', output)
+
+    tm = Template(payload_templates.module_j2)
+    output = tm.render(item=_module)
+    write_to_file(_module['module'], 'module', output)
+
+    tm = Template(payload_templates.payload_templates_j2)
+    output = tm.render()
+    write_to_file(_module['module'], 'payload_templates.py', output)
+
+    tm = Template(payload_templates.init_j2)
+    output = tm.render()
+    write_to_file(_module['module'], '__init__.py', output)
+
+    exit()
+
+
+def write_to_file(path, file, data):
+    _path_to_file = '{}/{}'.format(path, file)
+    f = open(_path_to_file, "w")
+    f.write(data)
+    f.close()
 
 
 if __name__ == "__main__":
