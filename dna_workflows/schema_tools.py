@@ -16,17 +16,18 @@ def create_new_workbook():
     return _wb
 
 
-def load_xl_wf_db(excel_db, flatten=False):
+def load_xl_wf_db(excel_db, flatten=False, fill_empty=False):
     _data = sdtables.load_xl_db(excel_db, flatten=flatten)
 
     return _data
 
 
-def build_module_schema(_wb, _schema):
+def build_module_schema(_wb, _schema, user_data=None):
     """ Builds Excel tables from schema based on module manifest.
 
     :param _wb: (object) An openpyxl workbook object
     :param _schema: (dict) Dictionary describing the project modules loaded from schema.yml
+    :param user_data: (dict) In the case that there is existing data to preserve we can provide the existing table data
 
     :returns: an updated openpyxl workbook object """
 
@@ -49,7 +50,13 @@ def build_module_schema(_wb, _schema):
             module_name = module_doc['module']['name']
             name = '{}.{}.{}'.format(module_schema, 'schema', module_name)
             schema_doc = module_doc['module']['schemas'][module_schema]
-            if 'data' in module_doc['module']:
+            if user_data is not None:
+                if name in user_data.keys():
+                    data = user_data[name]
+                    sdtables.add_schema_table_to_worksheet(ws, name, schema_doc, data=data, table_style='TableStyleMedium2')
+                else:
+                    sdtables.add_schema_table_to_worksheet(ws, name, schema_doc, table_style='TableStyleMedium2')
+            elif 'data' in module_doc['module']:
                 if module_schema in module_doc['module']['data'].keys():
                     data = module_doc['module']['data'][module_schema]
                     sdtables.add_schema_table_to_worksheet(ws, name, schema_doc, data=data, table_style='TableStyleMedium2')
@@ -61,12 +68,13 @@ def build_module_schema(_wb, _schema):
     return _wb
 
 
-def build_workflow_task_sheet(_wb, _schema):
+def build_workflow_task_sheet(_wb, _schema, user_data=None):
     """ Builds the workflows cover sheet with a table containing available tasks
     based on the project manifest loaded from schema.yml.
 
     :param _wb: (object) An openpyxl workbook object
     :param _schema: (dict) Dictionary describing the project modules loaded from schema.yml
+    :param user_data: (dict) In the case that there is existing data to preserve we can provide the existing table data
 
     :returns: an updated openpyxl workbook object """
 
@@ -80,6 +88,14 @@ def build_workflow_task_sheet(_wb, _schema):
 
         for m in module_doc['module']['methods']:
             methods.append(m)
+
+    if user_data is not None:
+        user_methods = user_data['workflow']
+        # Surely this could be written as a list comprehension?
+        for _m in methods:
+            for row in user_methods:
+                if _m['module'] == row['module'] and _m['task'] == row['task']:
+                    _m['status'] = row['status']
 
     _ws = _wb.create_sheet("workflows", 0)
     _ws.sheet_properties.tabColor = "0080FF"

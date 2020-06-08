@@ -6,6 +6,7 @@ from jinja2 import Template
 import json
 import argparse
 import os
+from shutil import copyfile
 import requests
 from pathlib import Path
 from dna_workflows import wf_engine
@@ -21,6 +22,8 @@ def main():
     group.add_argument("--db", help=".xlsx file to use as the db")
     group.add_argument("--yaml-db", help=".yaml file to use as the db")
     parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
+    parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
+                                                     "schema based on the latest module definition")
     parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
     parser.add_argument("--offline", action='store_true',
                         help="Creates a 'dummy' api object, useful for workflow development")
@@ -42,8 +45,27 @@ def main():
         wb.save(args.build_xlsx)
         exit()
 
+    if args.update_xlsx_schema:
+        from dna_workflows import schema_tools
+        manifest = 'manifest.yml'
+        new_file = args.update_xlsx_schema
+        backup_file = 'save.{}'.format(args.update_xlsx_schema)
+        try:
+            copyfile(args.update_xlsx_schema, backup_file)
+        except OSError as e:
+            print('ERROR: could not create db backup file {}: {}'.format(backup_file, e))
+            exit()
+        schema = yaml.load(open(manifest, 'r'), Loader=yaml.SafeLoader)
+        _workflow_db = schema_tools.load_xl_wf_db(args.update_xlsx_schema, flatten=True, fill_empty=True)
+        wb = schema_tools.create_new_workbook()
+        wb = schema_tools.build_module_schema(wb, schema, user_data=_workflow_db)
+        wb = schema_tools.build_workflow_task_sheet(wb, schema, user_data=_workflow_db)
+        wb.save(new_file)
+        exit()
+
     if args.add_module_skeleton:
         create_module_skeleton()
+        exit()
 
     workflow_db = compile_workflow(args)
     workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
@@ -160,7 +182,7 @@ def create_module_skeleton():
     output = tm.render()
     write_to_file(_module['module'], '__init__.py', output)
 
-    exit()
+    return
 
 
 def write_to_file(path, file, data):

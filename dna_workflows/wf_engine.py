@@ -73,7 +73,7 @@ def execute_task(_task, api, _workflow_db):
     else:
         options = {}
 
-    if 'noop' in options.keys() or 'offline' == api:
+    if 'noop' in _task_workflow or 'offline' == api:
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task_stage, _task_workflow, _task_name))
     else:
 
