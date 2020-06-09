@@ -124,13 +124,18 @@ def run_setup(_workflow_db):
     if 'offline' in _workflow_db['api_creds'].keys():
         api = {'offline': True}
     else:
+        nosdk = True
         if 'dnacentersdk' in _workflow_db['api_creds'].keys():
             _sdk = sdk_setup_dnacentersdk(_workflow_db['api_creds'])
             api.update({'dnacentersdk': _sdk})
+            nosdk = False
         if 'isepac' in _workflow_db['api_creds'].keys():
             _sdk = sdk_setup_isepac(_workflow_db['api_creds'])
             api.update({'isepac': _sdk})
-        else:
+            nosdk = False
+
+        # If we didn't find and SDK then exit
+        if nosdk:
             logger.error('No valid SDK credentials found')
             exit()
 
