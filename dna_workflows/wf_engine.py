@@ -64,7 +64,6 @@ def execute_task(_task, api, _workflow_db):
 
     _task_stage = _task[0]
     _task_workflow = _task[1]
-    _workflow_db.pop('workflow', None)
     _workflow_dict = _workflow_db
     _task_name = _task[2]
 
