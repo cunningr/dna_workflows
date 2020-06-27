@@ -37,8 +37,11 @@ def build_module_schema(_wb, _schema, user_data=None):
         exec_str = '{}.get_module_definition()'.format(module)
         module_doc = eval(exec_str)
 
-        ws = _wb.create_sheet(module)
-        ws.sheet_properties.tabColor = "009900"
+        if 'schemas' in module_doc['module']:
+            ws = _wb.create_sheet(module)
+            ws.sheet_properties.tabColor = "009900"
+        else:
+            continue
 
         if 'description' in module_doc['module'].keys():
             ws.append({2: module_doc['module']['description']})

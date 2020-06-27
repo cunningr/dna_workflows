@@ -5,7 +5,7 @@ setup(
   package_data={
     'dna_workflows': ['module']
   },
-  version='0.0.9',
+  version='0.0.11',
   license='MIT',
   description='dna_workflows is a basic workflow engine for executing DNA Workflows packages',
   author='Richard Cunningham',
@@ -20,7 +20,7 @@ setup(
       'requests',
       'netaddr',
       'pyyaml',
-      'sdtables=1.0.3',
+      'sdtables==1.0.3',
       'dnacentersdk',
       'ISE'
   ],
