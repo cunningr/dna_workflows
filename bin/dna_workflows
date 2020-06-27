@@ -30,7 +30,6 @@ def main():
     parser.add_argument("--dump-db-to-yaml", help="Creates an yaml file from provided *.xlsx workbook")
     parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
     parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
-    parser.add_argument("--incognito", action='store_true', help="Disable sending of usage statistics")
     parser.add_argument("--add-module-skeleton", action='store_true', help="Create a DNA Workflows module template")
     parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
     args = parser.parse_args()
@@ -115,7 +114,6 @@ def compile_workflow(args):
 
     if args.debug: options.update({'logging': 'DEBUG'})
     if args.noop: options.update({'noop': True})
-    if args.incognito: options.update({'incognito': True})
     if args.host: options.update({'host': args.host})
     _workflow_db.update({'options': options})
 
