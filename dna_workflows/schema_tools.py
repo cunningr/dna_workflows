@@ -108,7 +108,7 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
     sdtables.add_schema_table_to_worksheet(_ws, 'workflow', wf_schema, data=methods, table_style='TableStyleLight14')
 
     # Add conditional formatting to workflow worksheet
-    for table in _ws._tables:
+    for table in _ws.tables.values():
         if 'workflow' == table.name:
             _tdef = table.ref
             red_fill = PatternFill(bgColor="9da19e")
