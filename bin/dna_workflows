@@ -67,17 +67,6 @@ def main():
         exit()
 
     workflow_db = compile_workflow(args)
-    workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
-    for _row in workflow_db['workflow']:
-        _row.pop('status', None)
-        _row.pop('minimum_versions', None)
-        _row.pop('author', None)
-        _row.pop('documentation', None)
-
-    if args.dump_db_to_yaml:
-        with open(args.dump_db_to_yaml, 'w') as file:
-            yaml.dump(workflow_db, file)
-
     write_modules_manifest(workflow_db)
 
     if 'host' in workflow_db['options'].keys():
@@ -106,20 +95,29 @@ def compile_workflow(args):
         _workflow_db = {'workflow': [{'stage': '1', 'module': 'noop', 'task': 'noop', 'api': 'noop'}]}
 
     # Build options for workflow_db
-    if args.offline:
-        _workflow_db.update({'api_creds': {'offline': True}})
-    else:
-        api_creds = load_credentials()
-        _workflow_db.update({'api_creds': api_creds})
-
     if args.debug: options.update({'logging': 'DEBUG'})
     if args.noop: options.update({'noop': True})
     if args.host: options.update({'host': args.host})
     _workflow_db.update({'options': options})
 
-    # if args.dump_db_to_yaml:
-    #     with open(args.dump_db_to_yaml, 'w') as file:
-    #         yaml.dump(_workflow_db, file)
+    # Remove disabled functions
+    _workflow_db['workflow'] = [_row for _row in _workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
+    for _row in _workflow_db['workflow']:
+        _row.pop('status', None)
+        _row.pop('minimum_versions', None)
+        _row.pop('author', None)
+        _row.pop('documentation', None)
+
+    if args.dump_db_to_yaml:
+        with open(args.dump_db_to_yaml, 'w') as file:
+            yaml.dump(_workflow_db, file)
+
+    # Add credentials last, after yaml.dump
+    if args.offline:
+        _workflow_db.update({'api_creds': {'offline': True}})
+    else:
+        api_creds = load_credentials()
+        _workflow_db.update({'api_creds': api_creds})
 
     return _workflow_db
 
