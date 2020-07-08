@@ -38,7 +38,10 @@ def build_module_schema(_wb, _schema, user_data=None):
         module_doc = eval(exec_str)
 
         if 'schemas' in module_doc['module']:
-            ws = _wb.create_sheet(module)
+            if len(module.split('.')) == 2:
+                ws = _wb.create_sheet(module.split('.')[1])
+            else:
+                ws = _wb.create_sheet(module)
             ws.sheet_properties.tabColor = "009900"
         else:
             continue
@@ -100,16 +103,22 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
                 if _m['module'] == row['module'] and _m['task'] == row['task']:
                     _m['status'] = row['status']
 
+    if 'provides' in _schema.keys():
+        parent_module = _schema['provides']
+        for _m in methods:
+            _m['module'] = '{}.{}'.format(parent_module, _m['module'])
+
+    _table_name = 'workflow'
     _ws = _wb.create_sheet("workflows", 0)
     _ws.sheet_properties.tabColor = "0080FF"
     from dna_workflows import wf_engine
     wf_doc = wf_engine.get_module_definition()
     wf_schema = wf_doc['module']['schemas']['workflow']
-    sdtables.add_schema_table_to_worksheet(_ws, 'workflow', wf_schema, data=methods, table_style='TableStyleLight14')
+    sdtables.add_schema_table_to_worksheet(_ws, _table_name, wf_schema, data=methods, table_style='TableStyleLight14')
 
     # Add conditional formatting to workflow worksheet
     for table in _ws.tables.values():
-        if 'workflow' == table.name:
+        if 'workflow' == table.name.split('.')[0]:
             _tdef = table.ref
             red_fill = PatternFill(bgColor="9da19e")
             dxf = DifferentialStyle(fill=red_fill)
