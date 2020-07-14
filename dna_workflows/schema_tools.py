@@ -90,6 +90,7 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
         module_doc = eval(exec_str)
 
         for m in module_doc['module']['methods']:
+            m.update({'module': module})
             methods.append(m)
 
     if user_data is not None:
@@ -100,12 +101,13 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
                 if _m['module'] == row['module'] and _m['task'] == row['task']:
                     _m['status'] = row['status']
 
+    _table_name = 'workflow'
     _ws = _wb.create_sheet("workflows", 0)
     _ws.sheet_properties.tabColor = "0080FF"
     from dna_workflows import wf_engine
     wf_doc = wf_engine.get_module_definition()
     wf_schema = wf_doc['module']['schemas']['workflow']
-    sdtables.add_schema_table_to_worksheet(_ws, 'workflow', wf_schema, data=methods, table_style='TableStyleLight14')
+    sdtables.add_schema_table_to_worksheet(_ws, _table_name, wf_schema, data=methods, table_style='TableStyleLight14')
 
     # Add conditional formatting to workflow worksheet
     for table in _ws.tables.values():
