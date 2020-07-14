@@ -40,40 +40,7 @@ def main():
 
     if args.build_xlsx:
         from dna_workflows import schema_tools
-        if args.module:
-            _import = 'import {}'.format(args.module)
-            exec(_import, globals())
-            _manifest_str = '{}.manifest'.format(args.module)
-            module_list = []
-            for _sub_module in globals()[args.module].manifest:
-                module_list.append('{}.{}'.format(args.module, _sub_module))
-            _manifest = {'manifest': module_list, 'provides': globals()[args.module].provides}
-        elif args.manifest:
-            manifest_file = Path(args.manifest)
-            if manifest_file.is_file():
-                try:
-                    _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
-                except Exception as e:
-                    print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
-                    print(e)
-                    exit()
-            else:
-                print('ERROR: manifest file {} not found'.format(manifest_file))
-                exit()
-
-        else:
-            manifest_file = Path('manifest.yml')
-            if manifest_file.is_file():
-                try:
-                    _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
-                except Exception as e:
-                    print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
-                    print(e)
-                    exit()
-            else:
-                print('ERROR: manifest file {} not found'.format(manifest_file))
-                exit()
-
+        _manifest = _manifest_loader(args)
         wb = schema_tools.create_new_workbook()
         wb = schema_tools.build_module_schema(wb, _manifest)
         wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
@@ -82,7 +49,6 @@ def main():
 
     if args.update_xlsx_schema:
         from dna_workflows import schema_tools
-        manifest_file = 'manifest.yml'
         new_file = args.update_xlsx_schema
         backup_file = 'save.{}'.format(args.update_xlsx_schema)
         try:
@@ -90,7 +56,7 @@ def main():
         except OSError as e:
             print('ERROR: could not create db backup file {}: {}'.format(backup_file, e))
             exit()
-        _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
+        _manifest = _manifest_loader(args)
         _workflow_db = schema_tools.load_xl_wf_db(args.update_xlsx_schema, flatten=True, fill_empty=True)
         wb = schema_tools.create_new_workbook()
         wb = schema_tools.build_module_schema(wb, _manifest, user_data=_workflow_db)
@@ -125,6 +91,44 @@ def main():
     if not args.persist_module_manifest:
         if os.path.isfile(module_file_path):
             os.remove(module_file_path)
+
+
+def _manifest_loader(args):
+    if args.module:
+        _import = 'import {}'.format(args.module)
+        exec(_import, globals())
+        _manifest_str = '{}.manifest'.format(args.module)
+        module_list = []
+        for _sub_module in globals()[args.module].manifest:
+            module_list.append('{}.{}'.format(args.module, _sub_module))
+        _manifest = {'manifest': module_list, 'provides': globals()[args.module].provides}
+    elif args.manifest:
+        manifest_file = Path(args.manifest)
+        if manifest_file.is_file():
+            try:
+                _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
+            except Exception as e:
+                print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
+                print(e)
+                exit()
+        else:
+            print('ERROR: manifest file {} not found'.format(manifest_file))
+            exit()
+
+    else:
+        manifest_file = Path('manifest.yml')
+        if manifest_file.is_file():
+            try:
+                _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
+            except Exception as e:
+                print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
+                print(e)
+                exit()
+        else:
+            print('ERROR: manifest file {} not found'.format(manifest_file))
+            exit()
+
+    return _manifest
 
 
 def compile_workflow(args):

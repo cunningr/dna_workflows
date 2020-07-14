@@ -38,10 +38,7 @@ def build_module_schema(_wb, _schema, user_data=None):
         module_doc = eval(exec_str)
 
         if 'schemas' in module_doc['module']:
-            if len(module.split('.')) == 2:
-                ws = _wb.create_sheet(module.split('.')[1])
-            else:
-                ws = _wb.create_sheet(module)
+            ws = _wb.create_sheet(module)
             ws.sheet_properties.tabColor = "009900"
         else:
             continue
@@ -93,6 +90,7 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
         module_doc = eval(exec_str)
 
         for m in module_doc['module']['methods']:
+            m.update({'module': module})
             methods.append(m)
 
     if user_data is not None:
@@ -102,11 +100,6 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
             for row in user_methods:
                 if _m['module'] == row['module'] and _m['task'] == row['task']:
                     _m['status'] = row['status']
-
-    if 'provides' in _schema.keys():
-        parent_module = _schema['provides']
-        for _m in methods:
-            _m['module'] = '{}.{}'.format(parent_module, _m['module'])
 
     _table_name = 'workflow'
     _ws = _wb.create_sheet("workflows", 0)
@@ -118,7 +111,7 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
 
     # Add conditional formatting to workflow worksheet
     for table in _ws.tables.values():
-        if 'workflow' == table.name.split('.')[0]:
+        if 'workflow' == table.name:
             _tdef = table.ref
             red_fill = PatternFill(bgColor="9da19e")
             dxf = DifferentialStyle(fill=red_fill)
