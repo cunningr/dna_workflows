@@ -81,7 +81,7 @@ def execute_task(_task, api, _workflow_db):
         _import = 'import {}'.format(_task_workflow)
         _task_exec = '{}.{}(api, copy.deepcopy({}))'.format(_task_workflow, _task_name, _workflow_dict)
 
-        if _task_workflow in sys.modules:
+        if _task_workflow in globals():
             pass
         elif _task_workflow in modules['modules'].keys():
             logger.info('Loading module {}'.format(_task_workflow))

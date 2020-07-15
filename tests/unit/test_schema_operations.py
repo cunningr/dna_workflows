@@ -5,8 +5,14 @@ import logging
 import io
 import os
 import shutil
+import sys
 import pkgutil
 import yaml
+
+try:
+    sys.path.index('../')
+except ValueError:
+    sys.path.append('../')
 
 level = logging.getLevelName('DEBUG')
 LOGGER = logging.getLogger(__name__)
@@ -18,7 +24,7 @@ test_module_name = 'example_module'
 
 
 class TestModuleCreate:
-    def test_create_module(self, monkeypatch):
+    def test_create_module(self):
         _input = '{}\ncunningr@gmail.com'.format(test_module_name)
         with patch('sys.stdin', io.StringIO(_input)):
             wf_client.create_module_skeleton()
@@ -45,6 +51,15 @@ class TestModuleCreate:
         assert os.path.isfile(_xlsx_db)
         assert os.path.isfile(_xlsx_db_save)
 
+    def test_run_workflow_no_creds(self, capsys):
+        _xlsx_db = '{}.xlsx'.format(file_db)
+        with patch('sys.argv', ['dna_workflows', '--db', _xlsx_db]):
+            wf_client.main()
+        captured = capsys.readouterr()
+        LOGGER.debug('OUTPUT: {}'.format(captured.out))
+        LOGGER.debug('ERROR: {}'.format(captured.err))
+        assert 'Unable to find credentials' in captured.out
+
     def test_yaml_dump(self):
         _xlsx_db = '{}.xlsx'.format(file_db)
         _yaml_db = '{}.yaml'.format(file_db)
@@ -65,6 +80,7 @@ class TestModuleCreate:
         _xlsx_db = '{}.xlsx'.format(file_db)
         _xlsx_db_save = 'save.{}.xlsx'.format(file_db)
         _yaml_db = '{}.yaml'.format(file_db)
+
         LOGGER.debug('Cleanup module: {}'.format(test_module_name))
         shutil.rmtree(test_module_name)
         assert os.path.isdir(test_module_name) is False

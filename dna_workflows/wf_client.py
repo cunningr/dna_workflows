@@ -50,6 +50,9 @@ def main():
         return
 
     workflow_db = compile_workflow(args)
+    if workflow_db is None:
+        return None
+
     workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
     for _row in workflow_db['workflow']:
         _row.pop('status', None)
@@ -155,6 +158,9 @@ def compile_workflow(args):
         _workflow_db.update({'api_creds': {'offline': True}})
     else:
         api_creds = load_credentials()
+        if api_creds is None:
+            return None
+
         _workflow_db.update({'api_creds': api_creds})
 
     if args.debug: options.update({'logging': 'DEBUG'})
@@ -191,7 +197,7 @@ def load_credentials():
         return _creds
     else:
         print('Unable to find credentials in either ./credentials or ~/.dna_workflows/credentials')
-        return
+        return None
 
 
 def create_module_skeleton():
