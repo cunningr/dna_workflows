@@ -30,11 +30,20 @@ class TestModuleCreate:
 
     def test_build_xlsx(self):
         _xlsx_db = '{}.xlsx'.format(file_db)
-        _build_xlsx_arg = '--build-xlsx={}'.format(_xlsx_db)
         with patch('sys.argv', ['dna_workflows', '--build-xlsx', _xlsx_db]):
             wf_client.main()
         LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
         assert os.path.isfile(_xlsx_db)
+
+    def test_update_xlsx(self):
+        _xlsx_db = '{}.xlsx'.format(file_db)
+        _xlsx_db_save = 'save.{}.xlsx'.format(file_db)
+        with patch('sys.argv', ['dna_workflows', '--update-xlsx-schema', _xlsx_db]):
+            wf_client.main()
+        LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
+        LOGGER.debug('Assert isfile: {}'.format(_xlsx_db_save))
+        assert os.path.isfile(_xlsx_db)
+        assert os.path.isfile(_xlsx_db_save)
 
     def test_yaml_dump(self):
         _xlsx_db = '{}.xlsx'.format(file_db)
@@ -49,10 +58,12 @@ class TestModuleCreate:
         LOGGER.debug('Assert isfile: {}'.format(_yaml_db))
         assert os.path.isfile(_yaml_db)
         _workflow_db = yaml.load(open(_yaml_db, 'r'), Loader=yaml.SafeLoader)
+        # Add more tests here for schema content
         LOGGER.debug('{}'.format(_workflow_db.keys()))
 
     def test_cleanup(self):
         _xlsx_db = '{}.xlsx'.format(file_db)
+        _xlsx_db_save = 'save.{}.xlsx'.format(file_db)
         _yaml_db = '{}.yaml'.format(file_db)
         LOGGER.debug('Cleanup module: {}'.format(test_module_name))
         shutil.rmtree(test_module_name)
@@ -65,6 +76,10 @@ class TestModuleCreate:
         LOGGER.debug('Assert isfile: {} FALSE'.format(_xlsx_db))
         os.remove(_xlsx_db)
         assert os.path.isdir(_xlsx_db) is False
+
+        LOGGER.debug('Assert isfile: {} FALSE'.format(_xlsx_db_save))
+        os.remove(_xlsx_db_save)
+        assert os.path.isdir(_xlsx_db_save) is False
 
         LOGGER.debug('Assert isfile: {} FALSE'.format(_yaml_db))
         os.remove(_yaml_db)
