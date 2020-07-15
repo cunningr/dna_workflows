@@ -20,7 +20,7 @@ setup(
       'requests',
       'netaddr',
       'pyyaml',
-      'sdtables==1.0.4',
+      'sdtables',
       'dnacentersdk',
       'ISE'
   ],

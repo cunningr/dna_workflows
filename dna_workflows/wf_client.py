@@ -17,26 +17,7 @@ module_file_path = './.modules'
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--db", help=".xlsx file to use as the db")
-    group.add_argument("--yaml-db", help=".yaml file to use as the db")
-    parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
-    parser.add_argument("--module", help="Used to specify one or more modules when building an xlsx schema")
-    parser.add_argument("--manifest", help="Used to specify a manifest file when building an xlsx schema.  Note that "
-                                           "the modules must already be installed or available from the current "
-                                           "working directory")
-    parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
-                                                     "schema based on the latest module definition")
-    parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
-    parser.add_argument("--offline", action='store_true',
-                        help="Creates a 'dummy' api object, useful for workflow development")
-    parser.add_argument("--dump-db-to-yaml", help="Creates an yaml file from provided *.xlsx workbook")
-    parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
-    parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
-    parser.add_argument("--add-module-skeleton", action='store_true', help="Create a DNA Workflows module template")
-    parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
-    args = parser.parse_args()
+    args = parse_args(sys.argv[1:])
 
     if args.build_xlsx:
         from dna_workflows import schema_tools
@@ -45,7 +26,7 @@ def main():
         wb = schema_tools.build_module_schema(wb, _manifest)
         wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
         wb.save(args.build_xlsx)
-        exit()
+        return
 
     if args.update_xlsx_schema:
         from dna_workflows import schema_tools
@@ -55,18 +36,18 @@ def main():
             copyfile(args.update_xlsx_schema, backup_file)
         except OSError as e:
             print('ERROR: could not create db backup file {}: {}'.format(backup_file, e))
-            exit()
+            return
         _manifest = _manifest_loader(args)
         _workflow_db = schema_tools.load_xl_wf_db(args.update_xlsx_schema, flatten=True, fill_empty=True)
         wb = schema_tools.create_new_workbook()
         wb = schema_tools.build_module_schema(wb, _manifest, user_data=_workflow_db)
         wb = schema_tools.build_workflow_task_sheet(wb, _manifest, user_data=_workflow_db)
         wb.save(new_file)
-        exit()
+        return
 
     if args.add_module_skeleton:
         create_module_skeleton()
-        exit()
+        return
 
     workflow_db = compile_workflow(args)
     workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
@@ -93,6 +74,30 @@ def main():
             os.remove(module_file_path)
 
 
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--db", help=".xlsx file to use as the db")
+    group.add_argument("--yaml-db", help=".yaml file to use as the db")
+    parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
+    parser.add_argument("--module", help="Used to specify one or more modules when building an xlsx schema")
+    parser.add_argument("--manifest", help="Used to specify a manifest file when building an xlsx schema.  Note that "
+                                           "the modules must already be installed or available from the current "
+                                           "working directory")
+    parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
+                                                     "schema based on the latest module definition")
+    parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
+    parser.add_argument("--offline", action='store_true',
+                        help="Creates a 'dummy' api object, useful for workflow development")
+    parser.add_argument("--dump-db-to-yaml", help="Creates an yaml file from provided *.xlsx workbook")
+    parser.add_argument("--debug", action='store_true', help="Enable debug level messages mode")
+    parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
+    parser.add_argument("--add-module-skeleton", action='store_true', help="Create a DNA Workflows module template")
+    parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
+
+    return parser.parse_args(args)
+
+
 def _manifest_loader(args):
     if args.module:
         _import = 'import {}'.format(args.module)
@@ -110,10 +115,10 @@ def _manifest_loader(args):
             except Exception as e:
                 print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
                 print(e)
-                exit()
+                return
         else:
             print('ERROR: manifest file {} not found'.format(manifest_file))
-            exit()
+            return
 
     else:
         manifest_file = Path('manifest.yml')
@@ -123,10 +128,10 @@ def _manifest_loader(args):
             except Exception as e:
                 print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
                 print(e)
-                exit()
+                return
         else:
             print('ERROR: manifest file {} not found'.format(manifest_file))
-            exit()
+            return
 
     return _manifest
 
@@ -186,7 +191,7 @@ def load_credentials():
         return _creds
     else:
         print('Unable to find credentials in either ./credentials or ~/.dna_workflows/credentials')
-        exit()
+        return
 
 
 def create_module_skeleton():
@@ -219,6 +224,18 @@ def create_module_skeleton():
     tm = Template(payload_templates.init_j2)
     output = tm.render()
     write_to_file(_module['module'], '__init__.py', output)
+
+    # Update manifest.yml
+    if os.path.isfile('manifest.yml'):
+        _manifest = yaml.load(open('manifest.yml', 'r'), Loader=yaml.SafeLoader)
+        if _module['module'] not in _manifest['manifest']:
+            _manifest['manifest'].append(_module['module'])
+            with open('manifest.yml', 'w') as file:
+                yaml.dump(_manifest, file)
+    else:
+        _manifest = {'manifest': [_module['module']]}
+        with open('manifest.yml', 'w') as file:
+            yaml.dump(_manifest, file)
 
     return
 
