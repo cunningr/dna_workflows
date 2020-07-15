@@ -290,4 +290,7 @@ module:
 
 ## FAQ
 
+Q. How do I run the unittests?
+A. ```pytest -o log_cli=true tests/unit/test_schema_operations.py```
+
  
