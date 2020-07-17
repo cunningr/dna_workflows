@@ -29,7 +29,7 @@ module:
           default: 'value1'
         key2:
           type: boolean
-          default: 'FALSE'
+          default: False
         example_tref:
           type: string
           tref: 'INDIRECT("another_table.schema.{{ item.module }}[testCol1]")'
