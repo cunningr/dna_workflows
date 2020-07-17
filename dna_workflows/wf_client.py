@@ -23,9 +23,18 @@ def main():
         from dna_workflows import schema_tools
         _manifest = _manifest_loader(args)
         wb = schema_tools.create_new_workbook()
-        wb = schema_tools.build_module_schema(wb, _manifest)
+        wb = schema_tools.build_module_schema(wb, _manifest, user_data={})
         wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
         wb.save(args.build_xlsx)
+        return
+
+    if args.build_test_xlsx:
+        from dna_workflows import schema_tools
+        _manifest = _manifest_loader(args)
+        wb = schema_tools.create_new_workbook()
+        wb = schema_tools.build_module_schema(wb, _manifest)
+        wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
+        wb.save(args.build_test_xlsx)
         return
 
     if args.update_xlsx_schema:
@@ -83,6 +92,8 @@ def parse_args(args):
     group.add_argument("--db", help=".xlsx file to use as the db")
     group.add_argument("--yaml-db", help=".yaml file to use as the db")
     parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
+    parser.add_argument("--build-test-xlsx", help="Builds a Excel workflow db based on the module manifest with "
+                                                  "prepopulated test data")
     parser.add_argument("--module", help="Used to specify one or more modules when building an xlsx schema")
     parser.add_argument("--manifest", help="Used to specify a manifest file when building an xlsx schema.  Note that "
                                            "the modules must already be installed or available from the current "

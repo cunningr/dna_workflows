@@ -41,9 +41,16 @@ class TestModuleCreate:
         LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
         assert os.path.isfile(_xlsx_db)
 
+    def test_build_test_xlsx(self):
+        _xlsx_db = 'test_{}.xlsx'.format(file_db)
+        with patch('sys.argv', ['dna_workflows', '--build-test-xlsx', _xlsx_db]):
+            wf_client.main()
+        LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
+        assert os.path.isfile(_xlsx_db)
+
     def test_update_xlsx(self):
-        _xlsx_db = '{}.xlsx'.format(file_db)
-        _xlsx_db_save = 'save.{}.xlsx'.format(file_db)
+        _xlsx_db = 'test_{}.xlsx'.format(file_db)
+        _xlsx_db_save = 'save.test_{}.xlsx'.format(file_db)
         with patch('sys.argv', ['dna_workflows', '--update-xlsx-schema', _xlsx_db]):
             wf_client.main()
         LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
@@ -78,7 +85,8 @@ class TestModuleCreate:
 
     def test_cleanup(self):
         _xlsx_db = '{}.xlsx'.format(file_db)
-        _xlsx_db_save = 'save.{}.xlsx'.format(file_db)
+        _test_xlsx_db = 'test_{}.xlsx'.format(file_db)
+        _xlsx_db_save = 'save.test_{}.xlsx'.format(file_db)
         _yaml_db = '{}.yaml'.format(file_db)
 
         LOGGER.debug('Cleanup module: {}'.format(test_module_name))
@@ -92,6 +100,10 @@ class TestModuleCreate:
         LOGGER.debug('Assert isfile: {} FALSE'.format(_xlsx_db))
         os.remove(_xlsx_db)
         assert os.path.isdir(_xlsx_db) is False
+
+        LOGGER.debug('Assert isfile: {} FALSE'.format(_test_xlsx_db))
+        os.remove(_test_xlsx_db)
+        assert os.path.isdir(_test_xlsx_db) is False
 
         LOGGER.debug('Assert isfile: {} FALSE'.format(_xlsx_db_save))
         os.remove(_xlsx_db_save)
