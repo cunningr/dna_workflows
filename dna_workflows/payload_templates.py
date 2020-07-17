@@ -22,14 +22,20 @@ module:
         presence:
           type: string
           enum: ['present', 'absent']
+          default: 'present'
         key1:
           type: string
           enum: ['value1', 'value2', 'value3']
+          default: 'value1'
         key2:
           type: boolean
+          default: 'FALSE'
         example_tref:
           type: string
           tref: 'INDIRECT("another_table.schema.{{ item.module }}[testCol1]")'
+        example_default:
+          type: string
+          default: '=hello_world.schema.{{ item.module }}[[#This Row],[key1]]&"/"&hello_world.schema.{{ item.module }}[[#This Row],[key2]]'
     another_table:
       description: "A test reference table"
       properties:
