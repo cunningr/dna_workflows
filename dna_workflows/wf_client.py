@@ -16,8 +16,11 @@ sys.path.append(os.getcwd())
 module_file_path = './.modules'
 
 
-def main():
-    args = parse_args(sys.argv[1:])
+def run(_args=None):
+    if _args is not None:
+        args = parse_args(_args)
+    else:
+        args = parse_args(sys.argv[1:])
 
     if args.build_xlsx:
         from dna_workflows import schema_tools
@@ -279,4 +282,4 @@ def write_to_file(path, file, data):
 
 
 if __name__ == "__main__":
-    main()
+    run()
