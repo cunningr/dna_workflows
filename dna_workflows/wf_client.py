@@ -90,6 +90,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--db", help=".xlsx file to use as the db")
+    group.add_argument("--profile", help="Use this credentials profile")
     group.add_argument("--yaml-db", help=".yaml file to use as the db")
     parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
     parser.add_argument("--build-test-xlsx", help="Builds a Excel workflow db based on the module manifest with "
@@ -168,10 +169,13 @@ def compile_workflow(args):
     if args.offline:
         _workflow_db.update({'api_creds': {'offline': True}})
     else:
-        api_creds = load_credentials()
+        if args.profile:
+            api_creds = load_credentials(profile=args.profile)
+        else:
+            api_creds = load_credentials()
+
         if api_creds is None:
             return None
-
         _workflow_db.update({'api_creds': api_creds})
 
     if args.debug: options.update({'logging': 'DEBUG'})
@@ -197,18 +201,28 @@ def write_modules_manifest(_workflow_db):
         modules.write(json.dumps(wf_modules, indent=4))
 
 
-def load_credentials():
+def load_credentials(profile=None):
     _home_creds = '{}/.dna_workflows/credentials'.format(str(Path.home()))
 
     if os.path.isfile('./credentials'):
         _creds = yaml.load(open('./credentials', 'r'), Loader=yaml.SafeLoader)
-        return _creds
+        # return _creds
     elif os.path.isfile(_home_creds):
         _creds = yaml.load(open(_home_creds, 'r'), Loader=yaml.SafeLoader)
-        return _creds
+        # return _creds
     else:
         print('Unable to find credentials in either ./credentials or ~/.dna_workflows/credentials')
         return None
+
+    if profile is not None:
+        if profile in _creds.keys():
+            _pcreds = _creds[profile]
+            return _pcreds
+        else:
+            print('profile "{}" not found. Using default profile'.format(profile))
+            return _creds
+    else:
+        return _creds
 
 
 def create_module_skeleton():
