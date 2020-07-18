@@ -90,8 +90,8 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--db", help=".xlsx file to use as the db")
-    group.add_argument("--profile", help="Use this credentials profile")
     group.add_argument("--yaml-db", help=".yaml file to use as the db")
+    parser.add_argument("--profile", help="Use this credentials profile")
     parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
     parser.add_argument("--build-test-xlsx", help="Builds a Excel workflow db based on the module manifest with "
                                                   "prepopulated test data")
