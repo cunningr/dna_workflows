@@ -137,13 +137,16 @@ def validate_module_schema(_workflow_db):
             module_doc = eval(exec_str)
             module_name = module_doc['module']['name']
             print('VALIDATING module: {}'.format(module_name))
-            for _schema, _properties in module_doc['module']['schemas'].items():
-                _dnawf_schema_name = '{}.schema.{}'.format(_schema, module_name)
-                if _dnawf_schema_name in _workflow_db.keys():
-                    print('VALIDATING schema: {}'.format(_dnawf_schema_name))
-                    sdtables.validate_data(_properties, _workflow_db[_dnawf_schema_name])
-                else:
-                    print('scheam {} not found'.format(_dnawf_schema_name))
+            if 'schemas' in module_doc['module']:
+                for _schema, _properties in module_doc['module']['schemas'].items():
+                    _dnawf_schema_name = '{}.schema.{}'.format(_schema, module_name)
+                    if _dnawf_schema_name in _workflow_db.keys():
+                        print('VALIDATING schema: {}'.format(_dnawf_schema_name))
+                        sdtables.validate_data(_properties, _workflow_db[_dnawf_schema_name])
+                    else:
+                        print('scheam {} not found'.format(_dnawf_schema_name))
+
+    return
 
 # if __name__ == "__main__":
 #     schema = yaml.load(open(manifest, 'r'), Loader=yaml.SafeLoader)
