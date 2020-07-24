@@ -123,6 +123,28 @@ def build_workflow_task_sheet(_wb, _schema, user_data=None):
     return _wb
 
 
+def validate_module_schema(_workflow_db):
+    """ Validates the pre-loaded workflow DB against the module schema.
+
+    :param _workflow_db: (object) A DNA Workflows db pre-loaded from either Excel or YAML
+
+    :returns: Boolean depending on validation results """
+    for _task in _workflow_db['workflow']:
+        if 'enabled' in _task['status']:
+            exec_str = 'import {}'.format(_task['module'])
+            exec(exec_str)
+            exec_str = '{}.get_module_definition()'.format(_task['module'])
+            module_doc = eval(exec_str)
+            module_name = module_doc['module']['name']
+            print('VALIDATING module: {}'.format(module_name))
+            for _schema, _properties in module_doc['module']['schemas'].items():
+                _dnawf_schema_name = '{}.schema.{}'.format(_schema, module_name)
+                if _dnawf_schema_name in _workflow_db.keys():
+                    print('VALIDATING schema: {}'.format(_dnawf_schema_name))
+                    sdtables.validate_data(_properties, _workflow_db[_dnawf_schema_name])
+                else:
+                    print('scheam {} not found'.format(_dnawf_schema_name))
+
 # if __name__ == "__main__":
 #     schema = yaml.load(open(manifest, 'r'), Loader=yaml.SafeLoader)
 #     wb = create_new_workbook()

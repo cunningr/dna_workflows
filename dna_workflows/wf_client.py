@@ -104,6 +104,8 @@ def parse_args(args):
                                            "working directory")
     parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
                                                      "schema based on the latest module definition")
+    parser.add_argument("--validate", action='store_true',
+                        help="Requests that the workflow engine validate the DB data against module schema")
     parser.add_argument("--noop", action='store_true', help="Run the scheduling logic but do not execute any workflows")
     parser.add_argument("--offline", action='store_true',
                         help="Creates a 'dummy' api object, useful for workflow development")
@@ -155,7 +157,6 @@ def _manifest_loader(args):
 
 
 def compile_workflow(args):
-
     # Set db file
     options = {}
     if args.db and args.yaml_db:
@@ -184,6 +185,10 @@ def compile_workflow(args):
     if args.debug: options.update({'logging': 'DEBUG'})
     if args.noop: options.update({'noop': True})
     if args.host: options.update({'host': args.host})
+    if args.validate:
+        options.update({'validate': True})
+        schema_tools.validate_module_schema(_workflow_db)
+
     _workflow_db.update({'options': options})
 
     # if args.dump_db_to_yaml:
