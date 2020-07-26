@@ -5,6 +5,7 @@ import logging
 import json
 import sys
 import pkgutil
+import coloredlogs
 from dnacentersdk import DNACenterAPI
 from ise import ERS
 
@@ -112,12 +113,17 @@ def run_setup(_workflow_db):
     else:
         level = logging.getLevelName('INFO')
 
-    logger.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    logger.propagate = False
+    # logger.setLevel(level)
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # ch = logging.StreamHandler()
+    # ch.setFormatter(formatter)
+    # logger.addHandler(ch)
+    # logger.propagate = False
+
+    coloredlogs.install(level=level, logger=logger, fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        field_styles={'asctime': {'color': 'green'}, 'hostname': {'color': 'magenta'},
+                                        'levelname': {'bold': True, 'color': 'black'}, 'name': {'color': 'yellow'},
+                                        'programname': {'color': 'cyan'}, 'username': {'color': 'yellow'}})
 
     api = {}
     if 'offline' in _workflow_db['api_creds'].keys():

@@ -8,3 +8,4 @@ dnacentersdk
 sdtables
 openpyxl
 ISE
+coloredlogs
