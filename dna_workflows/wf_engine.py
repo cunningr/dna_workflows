@@ -1,8 +1,10 @@
 import yaml
 import traceback
+import io
 import copy
 import urllib3
 import logging
+import coloredlogs
 import json
 import sys
 import pkgutil
@@ -12,6 +14,7 @@ from ise import ERS
 # Settings
 urllib3.disable_warnings()
 logger = logging.getLogger('main')
+log_capture_string = io.StringIO()
 module_file_path = './.modules'
 
 
@@ -34,10 +37,7 @@ def run_wf(_workflow_db):
                 execute_task(_task, api, _workflow_db)
             except Exception as e:
                 logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
-                print('**************************************')
-                print(traceback.format_exc())
-                print(e)
-                print('**************************************')
+                logger.error('**** TRACEBACK ***\n\n {}'.format(traceback.format_exc()))
         elif 'noop' in _task_api:
             api = 'noop'
             execute_task(_task, api, _workflow_db)
@@ -49,6 +49,11 @@ def run_wf(_workflow_db):
             exit()
 
     logger.info('Workflow COMPLETE')
+    log_contents = log_capture_string.getvalue()
+    log_capture_string.close()
+
+    # At some point we may want to send a log report somewhere
+    # print(log_contents)
 
 
 def build_workflow_schedule(wf_tasks):
@@ -108,7 +113,7 @@ def execute_task(_task, api, _workflow_db):
 
 
 def run_setup(_workflow_db):
-    global logger
+    global logger, log_capture_string
 
     if 'options' in _workflow_db.keys():
         options = _workflow_db['options']
@@ -122,12 +127,14 @@ def run_setup(_workflow_db):
     else:
         level = logging.getLevelName('INFO')
 
-    logger.setLevel(level)
+    coloredlogs.install(level=level, logger=logger, fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        field_styles={'asctime': {'color': 'green'}, 'hostname': {'color': 'magenta'},
+                                        'levelname': {'bold': True, 'color': 'black'}, 'name': {'color': 'yellow'},
+                                        'programname': {'color': 'cyan'}, 'username': {'color': 'yellow'}})
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(log_capture_string)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    logger.propagate = False
 
     api = {}
     if 'offline' in _workflow_db['api_creds'].keys():
