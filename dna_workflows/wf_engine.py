@@ -1,4 +1,5 @@
 import yaml
+import traceback
 import copy
 import urllib3
 import logging
@@ -29,7 +30,14 @@ def run_wf(_workflow_db):
         _task_api = _task[3]
         if _task_api in apis.keys():
             api = apis[_task_api]
-            execute_task(_task, api, _workflow_db)
+            try:
+                execute_task(_task, api, _workflow_db)
+            except Exception as e:
+                logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
+                print('**************************************')
+                print(traceback.format_exc())
+                print(e)
+                print('**************************************')
         elif 'noop' in _task_api:
             api = 'noop'
             execute_task(_task, api, _workflow_db)
@@ -39,6 +47,8 @@ def run_wf(_workflow_db):
         else:
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
+
+    logger.info('Workflow COMPLETE')
 
 
 def build_workflow_schedule(wf_tasks):
