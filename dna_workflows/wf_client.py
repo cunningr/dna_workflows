@@ -65,7 +65,8 @@ def run(_args=None):
     if workflow_db is None:
         return None
 
-    workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
+    # workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
+    workflow_db['workflow'] = process_wf_tasks(workflow_db)
     for _row in workflow_db['workflow']:
         _row.pop('status', None)
         _row.pop('minimum_versions', None)
@@ -87,6 +88,41 @@ def run(_args=None):
     if not args.persist_module_manifest:
         if os.path.isfile(module_file_path):
             os.remove(module_file_path)
+
+
+def process_wf_tasks(workflow_db):
+    _workflow_task_list = []
+
+    # Collect workflow schemas
+    for _schema_name, _schema_data in workflow_db.items():
+        if 'workflow' in _schema_name:
+            wf_tasks = reformat_wf_tasks(_schema_name, _schema_data)
+            _workflow_task_list = _workflow_task_list + wf_tasks
+
+    return _workflow_task_list
+
+
+def reformat_wf_tasks(_schema_name, _schema_data):
+
+    if _schema_name == 'workflow':
+        # print('BACKWARD COMPAT')
+        _wf_tasks = [_row for _row in _schema_data if _row.get('status', 'enabled') == 'enabled']
+        return _wf_tasks
+    elif len(_schema_name.split('.')) == 2 and 'workflow' in _schema_name:
+        # print('NEW MODULE FORMAT')
+        _wf_tasks = [_row for _row in _schema_data if _row.get('status', 'enabled') == 'enabled']
+        return _wf_tasks
+    elif len(_schema_name.split('.')) == 3 and 'workflow.bundle' in _schema_name:
+        # print('NEW BUNDLE FORMAT')
+        _bundle_name = _schema_name.split('.')[2]
+        # print('Bundle name {}'.format(_bundle_name))
+        _wf_tasks = [_row for _row in _schema_data if _row.get('status', 'enabled') == 'enabled']
+        for _task in _wf_tasks:
+            _task['module'] = '.'.join([_bundle_name, _task['module']])
+        return _wf_tasks
+    else:
+        print('ERROR NO WORKFLOW SCHEMAS FOUND')
+        return -1
 
 
 def parse_args(args):

@@ -9,6 +9,7 @@ import json
 import sys
 import pkgutil
 from dnacentersdk import DNACenterAPI
+from dna_workflows import package_tools as packages
 from ise import ERS
 
 # Settings
@@ -77,39 +78,24 @@ def execute_task(_task, api, _workflow_db):
         logger.error('FATAL {} file not found'.format(module_file_path))
         exit()
 
-    _task_stage = _task[0]
-    _task_workflow = _task[1]
+    _stage = _task[0]
+    _module = _task[1]
     _workflow_dict = _workflow_db
-    _task_name = _task[2]
+    _task = _task[2]
 
     if 'options' in _workflow_db.keys():
         options = _workflow_db['options']
     else:
         options = {}
 
-    if 'noop' in _task_workflow or 'offline' == api:
-        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task_stage, _task_workflow, _task_name))
+    if 'noop' in _module or 'offline' == api:
+        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
     else:
 
-        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task_stage, _task_workflow, _task_name))
+        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
 
-        _import = 'import {}'.format(_task_workflow)
-        _task_exec = '{}.{}(api, copy.deepcopy({}))'.format(_task_workflow, _task_name, _workflow_dict)
-
-        if _task_workflow in globals():
-            pass
-        elif _task_workflow in modules['modules'].keys():
-            logger.info('Loading module {}'.format(_task_workflow))
-            exec(_import, globals())
-        else:
-            logger.error('Workflow module with name {} is not loaded'.format(_task_workflow))
-            return
-
-        if _task_name in modules['modules'][_task_workflow]:
-            exec(_task_exec)
-        else:
-            logger.error('Task {} from workflow module {} is not loaded'.format(_task_name, _task_workflow))
-            return
+        packages.load_module(_module)
+        packages.execute_task(api, _module, _task, _workflow_dict)
 
 
 def run_setup(_workflow_db):
