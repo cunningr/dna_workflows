@@ -24,10 +24,12 @@ def run(_args=None):
 
     if args.build_xlsx:
         from dna_workflows import schema_tools
-        _manifest = _manifest_loader(args)
+        from dna_workflows import package_tools
+        # _manifest = _manifest_loader(args)
+        modules = package_tools.build_module_list()
         wb = schema_tools.create_new_workbook()
-        wb = schema_tools.build_module_schema(wb, _manifest, user_data={})
-        wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
+        wb = schema_tools.build_module_schema(wb, modules, user_data={})
+        wb = schema_tools.build_workflow_task_sheet(wb, modules)
         wb.save(args.build_xlsx)
         return
 
@@ -56,6 +58,11 @@ def run(_args=None):
         wb = schema_tools.build_workflow_task_sheet(wb, _manifest, user_data=_workflow_db)
         wb.save(new_file)
         return
+
+    if args.install:
+        from dna_workflows import package_tools
+        _manifest = _manifest_loader(args)
+        return package_tools.install_manifest(_manifest)
 
     if args.add_module_skeleton:
         create_module_skeleton()
@@ -138,6 +145,8 @@ def parse_args(args):
     parser.add_argument("--manifest", help="Used to specify a manifest file when building an xlsx schema.  Note that "
                                            "the modules must already be installed or available from the current "
                                            "working directory")
+    parser.add_argument("--install", action='store_true', help="Install packages using a manifest from the current "
+                                                               "working directory")
     parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
                                                      "schema based on the latest module definition")
     parser.add_argument("--validate", action='store_true',
@@ -177,7 +186,7 @@ def _manifest_loader(args):
             return
 
     else:
-        manifest_file = Path('manifest.yml')
+        manifest_file = Path('manifest.yaml')
         if manifest_file.is_file():
             try:
                 _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)

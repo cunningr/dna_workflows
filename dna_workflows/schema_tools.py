@@ -3,6 +3,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Color, PatternFill, Font, Alignment
 from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.formatting import Rule
+from dna_workflows import package_tools
 
 # manifest = 'manifest.yml'
 # xl_out = 'example.xlsx'
@@ -22,23 +23,20 @@ def load_xl_wf_db(excel_db, flatten=False, fill_empty=False):
     return _data
 
 
-def build_module_schema(_wb, _schema, user_data=None):
+def build_module_schema(_wb, _modules, user_data=None):
     """ Builds Excel tables from schema based on module manifest.
 
     :param _wb: (object) An openpyxl workbook object
-    :param _schema: (dict) Dictionary describing the project modules loaded from schema.yml
+    :param modules: (dict) Dictionary describing the project modules loaded from schema.yml
     :param user_data: (dict) In the case that there is existing data to preserve we can provide the existing table data
 
     :returns: an updated openpyxl workbook object """
 
-    for module in _schema['manifest']:
-        exec_str = 'import {}'.format(module)
-        exec(exec_str)
-        exec_str = '{}.get_module_definition()'.format(module)
-        module_doc = eval(exec_str)
+    for module in _modules:
+        module_doc = package_tools.get_module_doc(module)
 
         if 'schemas' in module_doc['module']:
-            ws = _wb.create_sheet(module)
+            ws = _wb.create_sheet(module_doc['module']['name'])
             ws.sheet_properties.tabColor = "009900"
         else:
             continue
@@ -71,54 +69,63 @@ def build_module_schema(_wb, _schema, user_data=None):
     return _wb
 
 
-def build_workflow_task_sheet(_wb, _schema, user_data=None):
+def build_workflow_task_sheet(_wb, _modules, user_data=None):
     """ Builds the workflows cover sheet with a table containing available tasks
     based on the project manifest loaded from schema.yml.
 
     :param _wb: (object) An openpyxl workbook object
-    :param _schema: (dict) Dictionary describing the project modules loaded from schema.yml
+    :param _modules: (dict) Dictionary describing the project modules loaded from schema.yml
     :param user_data: (dict) In the case that there is existing data to preserve we can provide the existing table data
 
     :returns: an updated openpyxl workbook object """
 
-    # Build a list of modules and tasks based on the manifest
-    methods = []
-    for module in _schema['manifest']:
-        exec_str = 'import {}'.format(module)
-        exec(exec_str)
-        exec_str = '{}.get_module_definition()'.format(module)
-        module_doc = eval(exec_str)
-
-        for m in module_doc['module']['methods']:
-            m.update({'module': module})
-            methods.append(m)
-
-    if user_data is not None:
-        user_methods = user_data['workflow']
-        # Surely this could be written as a list comprehension?
-        for _m in methods:
-            for row in user_methods:
-                if _m['module'] == row['module'] and _m['task'] == row['task']:
-                    _m['status'] = row['status']
-
-    _table_name = 'workflow'
-    _ws = _wb.create_sheet("workflows", 0)
-    _ws.sheet_properties.tabColor = "0080FF"
+    _manifest = package_tools.load_install_manifest()
     from dna_workflows import wf_engine
     wf_doc = wf_engine.get_module_definition()
-    wf_schema = wf_doc['module']['schemas']['workflow']
-    sdtables.add_schema_table_to_worksheet(_ws, _table_name, wf_schema, data=methods, table_style='TableStyleLight14')
+    _ws = _wb.create_sheet("workflows", 0)
+    _ws.sheet_properties.tabColor = "0080FF"
 
-    # Add conditional formatting to workflow worksheet
-    for table in _ws.tables.values():
-        if 'workflow' == table.name:
-            _tdef = table.ref
-            red_fill = PatternFill(bgColor="9da19e")
-            dxf = DifferentialStyle(fill=red_fill)
-            r = Rule(type="expression", dxf=dxf, stopIfTrue=True)
-            _formula = '${}="disabled"'.format(_tdef.split(':')[0])
-            r.formula = [_formula]
-            _ws.conditional_formatting.add(_tdef, r)
+    for _package_name, _package_meta in _manifest['manifest'].items():
+        _module_list = []
+        if _package_meta['type'] == 'module':
+            _module_list.append(_package_name)
+            _schema_suffix = _package_name
+        elif _package_meta['type'] == 'bundle':
+            _schema_suffix = 'bundle.{}'.format(_package_name)
+            for _bundle_module in _package_meta['provides']:
+                _module = '{}.{}'.format(_package_name, _bundle_module)
+                _module_list.append(_module)
+
+        # Build a list of modules and tasks based on the manifest
+        methods = []
+        for _module in _module_list:
+            module_doc = package_tools.get_module_doc(_module)
+
+            for m in module_doc['module']['methods']:
+                methods.append(m)
+
+        if user_data is not None:
+            user_methods = user_data['workflow']
+            # Surely this could be written as a list comprehension?
+            for _m in methods:
+                for row in user_methods:
+                    if _m['module'] == row['module'] and _m['task'] == row['task']:
+                        _m['status'] = row['status']
+
+        _table_name = 'workflow.{}'.format(_schema_suffix)
+        wf_schema = wf_doc['module']['schemas']['workflow']
+        sdtables.add_schema_table_to_worksheet(_ws, _table_name, wf_schema, data=methods, table_style='TableStyleLight14')
+
+        # Add conditional formatting to workflow worksheet
+        for table in _ws.tables.values():
+            if _table_name == table.name:
+                _tdef = table.ref
+                red_fill = PatternFill(bgColor="9da19e")
+                dxf = DifferentialStyle(fill=red_fill)
+                r = Rule(type="expression", dxf=dxf, stopIfTrue=True)
+                _formula = '${}="disabled"'.format(_tdef.split(':')[0])
+                r.formula = [_formula]
+                _ws.conditional_formatting.add(_tdef, r)
 
     return _wb
 
