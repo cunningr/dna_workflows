@@ -44,6 +44,7 @@ def run(_args=None):
 
     if args.update_xlsx_schema:
         from dna_workflows import schema_tools
+        from dna_workflows import package_tools
         new_file = args.update_xlsx_schema
         backup_file = 'save.{}'.format(args.update_xlsx_schema)
         try:
@@ -51,18 +52,23 @@ def run(_args=None):
         except OSError as e:
             print('ERROR: could not create db backup file {}: {}'.format(backup_file, e))
             return
-        _manifest = _manifest_loader(args)
+        modules = package_tools.build_module_list()
         _workflow_db = schema_tools.load_xl_wf_db(args.update_xlsx_schema, flatten=True, fill_empty=True)
         wb = schema_tools.create_new_workbook()
-        wb = schema_tools.build_module_schema(wb, _manifest, user_data=_workflow_db)
-        wb = schema_tools.build_workflow_task_sheet(wb, _manifest, user_data=_workflow_db)
+        wb = schema_tools.build_module_schema(wb, modules, user_data=_workflow_db)
+        wb = schema_tools.build_workflow_task_sheet(wb, modules, user_data=_workflow_db)
         wb.save(new_file)
         return
 
     if args.install:
         from dna_workflows import package_tools
-        _manifest = _manifest_loader(args)
-        return package_tools.install_manifest(_manifest)
+        # Move this to package_tools
+        # _manifest = _manifest_loader(args)
+        return package_tools.install_manifest()
+
+    if args.install_url:
+        from dna_workflows import package_tools
+        return package_tools.install_package_from_url(args.install_url)
 
     if args.add_module_skeleton:
         create_module_skeleton()
@@ -110,7 +116,6 @@ def process_wf_tasks(workflow_db):
 
 
 def reformat_wf_tasks(_schema_name, _schema_data):
-
     if _schema_name == 'workflow':
         # print('BACKWARD COMPAT')
         _wf_tasks = [_row for _row in _schema_data if _row.get('status', 'enabled') == 'enabled']
@@ -147,6 +152,8 @@ def parse_args(args):
                                            "working directory")
     parser.add_argument("--install", action='store_true', help="Install packages using a manifest from the current "
                                                                "working directory")
+    parser.add_argument("--install-url", help="Install packages using a manifest from a URL. The URL most provide a "
+                                              ".zip archive or the package.")
     parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
                                                      "schema based on the latest module definition")
     parser.add_argument("--validate", action='store_true',

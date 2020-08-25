@@ -1,9 +1,13 @@
 import sys
+import traceback
 import logging
 from pathlib import Path
 import os
 import shutil
 import yaml
+import requests
+import zipfile
+import io
 import copy
 
 logger = logging.getLogger('package_tools')
@@ -16,8 +20,20 @@ install_dir = '{}/.dna_workflows/install'.format(home)
 #     return _manifest
 
 
-def install_manifest(_manifest):
+def install_manifest():
     Path(install_dir).mkdir(parents=True, exist_ok=True)
+
+    _package_manifest = Path('manifest.yaml')
+    if _package_manifest.is_file():
+        try:
+            _manifest = yaml.load(open(_package_manifest, 'r'), Loader=yaml.SafeLoader)
+        except Exception as e:
+            print('Unable to load manifest {}.  Please check this valid YAML'.format(_package_manifest))
+            print(e)
+            return
+    else:
+        print('ERROR: manifest file {} not found'.format(_package_manifest))
+        return
 
     if 'manifest' not in _manifest.keys():
         logger.error('Error parsing manifest: BAD FORMAT {}'.format(_manifest))
@@ -127,6 +143,31 @@ def get_module_doc(_module):
     _module_doc = eval(exec_str)
 
     return _module_doc
+
+
+def install_package_from_url(url):
+    extract_path = './.package'
+    Path(extract_path).mkdir(parents=True, exist_ok=True)
+
+    r = requests.get(url, stream=True)
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    z.extractall(extract_path)
+
+    file_list = os.listdir(extract_path)
+    archive_root = '{}/{}'.format(extract_path, file_list[0])
+    if len(file_list) == 1 and os.path.isdir(archive_root):
+        logger.info('Archive extracted OK to path: {}'.format(archive_root))
+        pass
+    else:
+        logger.error('Fatal error extracting package.  Archive should contain a single root dir: {}'.format(file_list))
+        return -1
+
+    # Get the current working dir, do the install then remove the download
+    cwd = os.getcwd()
+    os.chdir(archive_root)
+    install_manifest()
+    os.chdir(cwd)
+    shutil.rmtree(extract_path)
 
 
 def copy_and_overwrite(from_path, to_path):
