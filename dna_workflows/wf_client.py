@@ -25,7 +25,6 @@ def run(_args=None):
     if args.build_xlsx:
         from dna_workflows import schema_tools
         from dna_workflows import package_tools
-        # _manifest = _manifest_loader(args)
         modules = package_tools.build_module_list()
         wb = schema_tools.create_new_workbook()
         wb = schema_tools.build_module_schema(wb, modules, user_data={})
@@ -35,10 +34,11 @@ def run(_args=None):
 
     if args.build_test_xlsx:
         from dna_workflows import schema_tools
-        _manifest = _manifest_loader(args)
+        from dna_workflows import package_tools
+        modules = package_tools.build_module_list()
         wb = schema_tools.create_new_workbook()
-        wb = schema_tools.build_module_schema(wb, _manifest)
-        wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
+        wb = schema_tools.build_module_schema(wb, modules)
+        wb = schema_tools.build_workflow_task_sheet(wb, modules)
         wb.save(args.build_test_xlsx)
         return
 

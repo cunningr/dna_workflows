@@ -54,7 +54,7 @@ def run_wf(_workflow_db):
     log_capture_string.close()
 
     # At some point we may want to send a log report somewhere
-    # print(log_contents)
+    return log_contents
 
 
 def build_workflow_schedule(wf_tasks):
