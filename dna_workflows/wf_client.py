@@ -24,24 +24,27 @@ def run(_args=None):
 
     if args.build_xlsx:
         from dna_workflows import schema_tools
-        _manifest = _manifest_loader(args)
+        from dna_workflows import package_tools
+        modules = package_tools.build_module_list()
         wb = schema_tools.create_new_workbook()
-        wb = schema_tools.build_module_schema(wb, _manifest, user_data={})
-        wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
+        wb = schema_tools.build_module_schema(wb, modules, user_data={})
+        wb = schema_tools.build_workflow_task_sheet(wb, modules)
         wb.save(args.build_xlsx)
         return
 
     if args.build_test_xlsx:
         from dna_workflows import schema_tools
-        _manifest = _manifest_loader(args)
+        from dna_workflows import package_tools
+        modules = package_tools.build_module_list()
         wb = schema_tools.create_new_workbook()
-        wb = schema_tools.build_module_schema(wb, _manifest)
-        wb = schema_tools.build_workflow_task_sheet(wb, _manifest)
+        wb = schema_tools.build_module_schema(wb, modules)
+        wb = schema_tools.build_workflow_task_sheet(wb, modules)
         wb.save(args.build_test_xlsx)
         return
 
     if args.update_xlsx_schema:
         from dna_workflows import schema_tools
+        from dna_workflows import package_tools
         new_file = args.update_xlsx_schema
         backup_file = 'save.{}'.format(args.update_xlsx_schema)
         try:
@@ -49,13 +52,23 @@ def run(_args=None):
         except OSError as e:
             print('ERROR: could not create db backup file {}: {}'.format(backup_file, e))
             return
-        _manifest = _manifest_loader(args)
+        modules = package_tools.build_module_list()
         _workflow_db = schema_tools.load_xl_wf_db(args.update_xlsx_schema, flatten=True, fill_empty=True)
         wb = schema_tools.create_new_workbook()
-        wb = schema_tools.build_module_schema(wb, _manifest, user_data=_workflow_db)
-        wb = schema_tools.build_workflow_task_sheet(wb, _manifest, user_data=_workflow_db)
+        wb = schema_tools.build_module_schema(wb, modules, user_data=_workflow_db)
+        wb = schema_tools.build_workflow_task_sheet(wb, modules, user_data=_workflow_db)
         wb.save(new_file)
         return
+
+    if args.install:
+        from dna_workflows import package_tools
+        # Move this to package_tools
+        # _manifest = _manifest_loader(args)
+        return package_tools.install_manifest()
+
+    if args.install_url:
+        from dna_workflows import package_tools
+        return package_tools.install_package_from_url(args.install_url)
 
     if args.add_module_skeleton:
         create_module_skeleton()
@@ -65,7 +78,8 @@ def run(_args=None):
     if workflow_db is None:
         return None
 
-    workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
+    # workflow_db['workflow'] = [_row for _row in workflow_db['workflow'] if _row.get('status', 'enabled') == 'enabled']
+    workflow_db['workflow'] = process_wf_tasks(workflow_db)
     for _row in workflow_db['workflow']:
         _row.pop('status', None)
         _row.pop('minimum_versions', None)
@@ -89,6 +103,40 @@ def run(_args=None):
             os.remove(module_file_path)
 
 
+def process_wf_tasks(workflow_db):
+    _workflow_task_list = []
+
+    # Collect workflow schemas
+    for _schema_name, _schema_data in workflow_db.items():
+        if 'workflow' in _schema_name:
+            wf_tasks = reformat_wf_tasks(_schema_name, _schema_data)
+            _workflow_task_list = _workflow_task_list + wf_tasks
+
+    return _workflow_task_list
+
+
+def reformat_wf_tasks(_schema_name, _schema_data):
+    if _schema_name == 'workflow':
+        # print('BACKWARD COMPAT')
+        _wf_tasks = [_row for _row in _schema_data if _row.get('status', 'enabled') == 'enabled']
+        return _wf_tasks
+    elif len(_schema_name.split('.')) == 2 and 'workflow' in _schema_name:
+        # print('NEW MODULE FORMAT')
+        _wf_tasks = [_row for _row in _schema_data if _row.get('status', 'enabled') == 'enabled']
+        return _wf_tasks
+    elif len(_schema_name.split('.')) == 3 and 'workflow.bundle' in _schema_name:
+        # print('NEW BUNDLE FORMAT')
+        _bundle_name = _schema_name.split('.')[2]
+        # print('Bundle name {}'.format(_bundle_name))
+        _wf_tasks = [_row for _row in _schema_data if _row.get('status', 'enabled') == 'enabled']
+        for _task in _wf_tasks:
+            _task['module'] = '.'.join([_bundle_name, _task['module']])
+        return _wf_tasks
+    else:
+        print('ERROR NO WORKFLOW SCHEMAS FOUND')
+        return -1
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group()
@@ -102,6 +150,10 @@ def parse_args(args):
     parser.add_argument("--manifest", help="Used to specify a manifest file when building an xlsx schema.  Note that "
                                            "the modules must already be installed or available from the current "
                                            "working directory")
+    parser.add_argument("--install", action='store_true', help="Install packages using a manifest from the current "
+                                                               "working directory")
+    parser.add_argument("--install-url", help="Install packages using a manifest from a URL. The URL must provide a "
+                                              ".zip archive for the package.")
     parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
                                                      "schema based on the latest module definition")
     parser.add_argument("--validate", action='store_true',
@@ -141,7 +193,7 @@ def _manifest_loader(args):
             return
 
     else:
-        manifest_file = Path('manifest.yml')
+        manifest_file = Path('manifest.yaml')
         if manifest_file.is_file():
             try:
                 _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)

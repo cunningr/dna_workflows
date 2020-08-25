@@ -20,6 +20,7 @@ setup(
       'requests',
       'netaddr',
       'pyyaml',
+      'coloredlogs',
       'sdtables',
       'dnacentersdk',
       'ISE'

@@ -1,6 +1,5 @@
 import yaml
 import traceback
-import io
 import copy
 import urllib3
 import logging
@@ -9,12 +8,12 @@ import json
 import sys
 import pkgutil
 from dnacentersdk import DNACenterAPI
+from dna_workflows import package_tools as packages
 from ise import ERS
 
 # Settings
 urllib3.disable_warnings()
 logger = logging.getLogger('main')
-log_capture_string = io.StringIO()
 module_file_path = './.modules'
 
 
@@ -48,12 +47,7 @@ def run_wf(_workflow_db):
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
 
-    logger.info('Workflow COMPLETE')
-    log_contents = log_capture_string.getvalue()
-    log_capture_string.close()
-
-    # At some point we may want to send a log report somewhere
-    # print(log_contents)
+    return
 
 
 def build_workflow_schedule(wf_tasks):
@@ -69,51 +63,30 @@ def build_workflow_schedule(wf_tasks):
 
 
 def execute_task(_task, api, _workflow_db):
-    # Only modules and tasks defined in the module manifest will be loaded/executed
-    try:
-        with open(module_file_path) as json_file:
-            modules = json.load(json_file)
-    except FileNotFoundError:
-        logger.error('FATAL {} file not found'.format(module_file_path))
-        exit()
 
-    _task_stage = _task[0]
-    _task_workflow = _task[1]
+    _stage = _task[0]
+    _module = _task[1]
     _workflow_dict = _workflow_db
-    _task_name = _task[2]
+    _task = _task[2]
 
     if 'options' in _workflow_db.keys():
         options = _workflow_db['options']
     else:
         options = {}
 
-    if 'noop' in _task_workflow or 'offline' == api:
-        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task_stage, _task_workflow, _task_name))
+    if 'noop' in _module or 'offline' == api:
+        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
     else:
 
-        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_task_stage, _task_workflow, _task_name))
+        logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
 
-        _import = 'import {}'.format(_task_workflow)
-        _task_exec = '{}.{}(api, copy.deepcopy({}))'.format(_task_workflow, _task_name, _workflow_dict)
-
-        if _task_workflow in globals():
-            pass
-        elif _task_workflow in modules['modules'].keys():
-            logger.info('Loading module {}'.format(_task_workflow))
-            exec(_import, globals())
-        else:
-            logger.error('Workflow module with name {} is not loaded'.format(_task_workflow))
-            return
-
-        if _task_name in modules['modules'][_task_workflow]:
-            exec(_task_exec)
-        else:
-            logger.error('Task {} from workflow module {} is not loaded'.format(_task_name, _task_workflow))
-            return
+        # We shouldn't need to load the module
+        # packages.load_module(_module)
+        packages.execute_task(api, _module, _task, _workflow_dict)
 
 
 def run_setup(_workflow_db):
-    global logger, log_capture_string
+    global logger
 
     if 'options' in _workflow_db.keys():
         options = _workflow_db['options']
@@ -131,10 +104,6 @@ def run_setup(_workflow_db):
                         field_styles={'asctime': {'color': 'green'}, 'hostname': {'color': 'magenta'},
                                         'levelname': {'bold': True, 'color': 'black'}, 'name': {'color': 'yellow'},
                                         'programname': {'color': 'cyan'}, 'username': {'color': 'yellow'}})
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch = logging.StreamHandler(log_capture_string)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
 
     api = {}
     if 'offline' in _workflow_db['api_creds'].keys():

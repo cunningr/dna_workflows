@@ -1,3 +1,4 @@
+pytest
 jinja2
 ipaddress
 argparse
