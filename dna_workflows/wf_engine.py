@@ -1,6 +1,5 @@
 import yaml
 import traceback
-import io
 import copy
 import urllib3
 import logging
@@ -15,7 +14,6 @@ from ise import ERS
 # Settings
 urllib3.disable_warnings()
 logger = logging.getLogger('main')
-log_capture_string = io.StringIO()
 module_file_path = './.modules'
 
 
@@ -48,13 +46,6 @@ def run_wf(_workflow_db):
         else:
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
-
-    logger.info('Workflow COMPLETE')
-    log_contents = log_capture_string.getvalue()
-    log_capture_string.close()
-
-    # At some point we may want to send a log report somewhere
-    # print(log_contents)
 
     return
 
@@ -101,7 +92,7 @@ def execute_task(_task, api, _workflow_db):
 
 
 def run_setup(_workflow_db):
-    global logger, log_capture_string
+    global logger
 
     if 'options' in _workflow_db.keys():
         options = _workflow_db['options']
@@ -119,10 +110,6 @@ def run_setup(_workflow_db):
                         field_styles={'asctime': {'color': 'green'}, 'hostname': {'color': 'magenta'},
                                         'levelname': {'bold': True, 'color': 'black'}, 'name': {'color': 'yellow'},
                                         'programname': {'color': 'cyan'}, 'username': {'color': 'yellow'}})
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch = logging.StreamHandler(log_capture_string)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
 
     api = {}
     if 'offline' in _workflow_db['api_creds'].keys():
