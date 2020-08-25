@@ -56,7 +56,7 @@ def load_install_manifest():
     return _manifest
 
 
-def load_module(_module, _bundle=''):
+def load_module(_module):
     try:
         sys.path.index(install_dir)
     except ValueError:
@@ -68,7 +68,7 @@ def load_module(_module, _bundle=''):
     if _module in globals():
         logger.debug('Module {} is already loaded'.format(_module))
     elif _module in _manifest:
-        logger.info('Loading module {}'.format(_module))
+        logger.debug('Loading module {}'.format(_module))
         exec(_import, globals())
     else:
         logger.error('Workflow module with name {} is not loaded'.format(_module))
@@ -78,10 +78,10 @@ def load_module(_module, _bundle=''):
 
 
 def execute_task(api, _module, _task, _workflow_dict):
-    _manifest = build_method_list(name_only=True)
-    _task_exec = '{}.{}(api, copy.deepcopy({}))'.format(_module, _task, _workflow_dict)
-    # print(_module, _task, _manifest)
-    if _task in _manifest:
+    _manifest = build_method_list(name_only_fully_qualified=True)
+    _func = '{}.{}'.format(_module, _task)
+    _task_exec = '{}(api, copy.deepcopy({}))'.format(_func, _workflow_dict)
+    if _func in _manifest:
         exec(_task_exec)
     else:
         logger.error('Task {} from workflow module {} is not loaded'.format(_task, _module))
@@ -104,15 +104,17 @@ def build_module_list():
     return _module_list
 
 
-def build_method_list(name_only=False):
+def build_method_list(name_only=False, name_only_fully_qualified=False):
     _methods = []
     for _module in build_module_list():
         module_doc = get_module_doc(_module)
 
         for m in module_doc['module']['methods']:
             if name_only:
-                _task = '{}.{}'.format(_module, m['task'])
                 _methods.append(m['task'])
+            elif name_only_fully_qualified:
+                _task = '{}.{}'.format(_module, m['task'])
+                _methods.append(_task)
             else:
                 _methods.append(m)
 

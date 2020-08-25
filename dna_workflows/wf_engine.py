@@ -63,13 +63,6 @@ def build_workflow_schedule(wf_tasks):
 
 
 def execute_task(_task, api, _workflow_db):
-    # Only modules and tasks defined in the module manifest will be loaded/executed
-    try:
-        with open(module_file_path) as json_file:
-            modules = json.load(json_file)
-    except FileNotFoundError:
-        logger.error('FATAL {} file not found'.format(module_file_path))
-        exit()
 
     _stage = _task[0]
     _module = _task[1]
@@ -87,7 +80,8 @@ def execute_task(_task, api, _workflow_db):
 
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
 
-        packages.load_module(_module)
+        # We shouldn't need to load the module
+        # packages.load_module(_module)
         packages.execute_task(api, _module, _task, _workflow_dict)
 
 
