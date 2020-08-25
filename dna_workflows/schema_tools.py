@@ -104,15 +104,22 @@ def build_workflow_task_sheet(_wb, _modules, user_data=None):
             for m in module_doc['module']['methods']:
                 methods.append(m)
 
+        # if user_data is not None:
+        #     user_methods = user_data['workflow']
+        #     # Surely this could be written as a list comprehension?
+        #     for _m in methods:
+        #         for row in user_methods:
+        #             if _m['module'] == row['module'] and _m['task'] == row['task']:
+        #                 _m['status'] = row['status']
+
+        _table_name = 'workflow.{}'.format(_schema_suffix)
         if user_data is not None:
-            user_methods = user_data['workflow']
-            # Surely this could be written as a list comprehension?
+            user_methods = get_data_from_schema(_table_name, user_data)
             for _m in methods:
                 for row in user_methods:
                     if _m['module'] == row['module'] and _m['task'] == row['task']:
                         _m['status'] = row['status']
 
-        _table_name = 'workflow.{}'.format(_schema_suffix)
         wf_schema = wf_doc['module']['schemas']['workflow']
         sdtables.add_schema_table_to_worksheet(_ws, _table_name, wf_schema, data=methods, table_style='TableStyleLight14')
 
@@ -128,6 +135,13 @@ def build_workflow_task_sheet(_wb, _modules, user_data=None):
                 _ws.conditional_formatting.add(_tdef, r)
 
     return _wb
+
+
+def get_data_from_schema(_schema_name, _db):
+    if _schema_name in _db.keys():
+        return _db[_schema_name]
+    else:
+        return []
 
 
 def validate_module_schema(_workflow_db):
