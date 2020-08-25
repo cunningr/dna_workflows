@@ -152,8 +152,8 @@ def parse_args(args):
                                            "working directory")
     parser.add_argument("--install", action='store_true', help="Install packages using a manifest from the current "
                                                                "working directory")
-    parser.add_argument("--install-url", help="Install packages using a manifest from a URL. The URL most provide a "
-                                              ".zip archive or the package.")
+    parser.add_argument("--install-url", help="Install packages using a manifest from a URL. The URL must provide a "
+                                              ".zip archive for the package.")
     parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
                                                      "schema based on the latest module definition")
     parser.add_argument("--validate", action='store_true',
