@@ -321,17 +321,9 @@ def create_module_skeleton():
     output = tm.render()
     write_to_file(_module['module'], '__init__.py', output)
 
-    # Update manifest.yml
-    if os.path.isfile('manifest.yml'):
-        _manifest = yaml.load(open('manifest.yml', 'r'), Loader=yaml.SafeLoader)
-        if _module['module'] not in _manifest['manifest']:
-            _manifest['manifest'].append(_module['module'])
-            with open('manifest.yml', 'w') as file:
-                yaml.dump(_manifest, file)
-    else:
-        _manifest = {'manifest': [_module['module']]}
-        with open('manifest.yml', 'w') as file:
-            yaml.dump(_manifest, file)
+    _manifest = {'manifest': {_module['module']: {'type': 'module'}}}
+    with open('manifest.yaml', 'w') as file:
+        yaml.dump(_manifest, file)
 
     return
 
