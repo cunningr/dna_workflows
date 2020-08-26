@@ -70,6 +70,10 @@ def run(_args=None):
         from dna_workflows import package_tools
         return package_tools.install_package_from_url(args.install_url)
 
+    if args.install_zip:
+        from dna_workflows import package_tools
+        return package_tools.install_package_from_zip(args.install_zip)
+
     if args.add_module_skeleton:
         create_module_skeleton()
         return
@@ -146,14 +150,15 @@ def parse_args(args):
     parser.add_argument("--build-xlsx", help="Builds a Excel workflow db based on the module manifest")
     parser.add_argument("--build-test-xlsx", help="Builds a Excel workflow db based on the module manifest with "
                                                   "prepopulated test data")
-    parser.add_argument("--module", help="Used to specify one or more modules when building an xlsx schema")
+    # parser.add_argument("--module", help="Used to specify one or more modules when building an xlsx schema")
     parser.add_argument("--manifest", help="Used to specify a manifest file when building an xlsx schema.  Note that "
                                            "the modules must already be installed or available from the current "
                                            "working directory")
     parser.add_argument("--install", action='store_true', help="Install packages using a manifest from the current "
                                                                "working directory")
-    parser.add_argument("--install-url", help="Install packages using a manifest from a URL. The URL must provide a "
+    parser.add_argument("--install-url", help="Install packages directly from URL. The URL must provide a "
                                               ".zip archive for the package.")
+    parser.add_argument("--install-zip", help="Install packages directly from a .zip archive.")
     parser.add_argument("--update-xlsx-schema", help="Takes an existing Excel workflow DB and tries to update the "
                                                      "schema based on the latest module definition")
     parser.add_argument("--validate", action='store_true',
@@ -316,17 +321,9 @@ def create_module_skeleton():
     output = tm.render()
     write_to_file(_module['module'], '__init__.py', output)
 
-    # Update manifest.yml
-    if os.path.isfile('manifest.yml'):
-        _manifest = yaml.load(open('manifest.yml', 'r'), Loader=yaml.SafeLoader)
-        if _module['module'] not in _manifest['manifest']:
-            _manifest['manifest'].append(_module['module'])
-            with open('manifest.yml', 'w') as file:
-                yaml.dump(_manifest, file)
-    else:
-        _manifest = {'manifest': [_module['module']]}
-        with open('manifest.yml', 'w') as file:
-            yaml.dump(_manifest, file)
+    _manifest = {'manifest': {_module['module']: {'type': 'module'}}}
+    with open('manifest.yaml', 'w') as file:
+        yaml.dump(_manifest, file)
 
     return
 

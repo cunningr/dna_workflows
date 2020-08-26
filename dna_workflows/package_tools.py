@@ -145,12 +145,11 @@ def get_module_doc(_module):
     return _module_doc
 
 
-def install_package_from_url(url):
+def install_package_from_zip(file):
     extract_path = './.package'
     Path(extract_path).mkdir(parents=True, exist_ok=True)
 
-    r = requests.get(url, stream=True)
-    z = zipfile.ZipFile(io.BytesIO(r.content))
+    z = zipfile.ZipFile(file)
     z.extractall(extract_path)
 
     file_list = os.listdir(extract_path)
@@ -168,6 +167,18 @@ def install_package_from_url(url):
     install_manifest()
     os.chdir(cwd)
     shutil.rmtree(extract_path)
+
+
+def install_package_from_url(url):
+    save_path = './package.zip'
+    chunk_size = 128
+
+    r = requests.get(url, stream=True)
+    with open(save_path, 'wb') as fd:
+        for chunk in r.iter_content(chunk_size=chunk_size):
+            fd.write(chunk)
+
+    install_package_from_zip(save_path)
 
 
 def copy_and_overwrite(from_path, to_path):
