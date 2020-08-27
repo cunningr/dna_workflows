@@ -15,11 +15,6 @@ home = str(Path.home())
 install_dir = '{}/.dna_workflows/install'.format(home)
 
 
-# def load_manifest():
-#     _manifest = {'modules':{'dnawf_dnac.sites': ['create', 'delete'], 'sites': ['create', 'delete']}}
-#     return _manifest
-
-
 def install_manifest():
     Path(install_dir).mkdir(parents=True, exist_ok=True)
 
@@ -149,8 +144,12 @@ def install_package_from_zip(file):
     extract_path = './.package'
     Path(extract_path).mkdir(parents=True, exist_ok=True)
 
-    z = zipfile.ZipFile(file)
-    z.extractall(extract_path)
+    try:
+        z = zipfile.ZipFile(file)
+        z.extractall(extract_path)
+    except FileNotFoundError:
+        logger.error('File not found: {}'.format(file))
+        return -1
 
     file_list = os.listdir(extract_path)
     archive_root = '{}/{}'.format(extract_path, file_list[0])

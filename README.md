@@ -1,8 +1,8 @@
 # DNA Workflows
 
-This is the DNA Workflows project for the ```dna_workflows.py``` client and workflow engine code.  It provides a wrapper for publicly available Cisco SDKs and python libraries allowing users to develop 'Task' libraries and execute them using a simple linear workflow engine.
+This is the DNA Workflows project for the client and workflow engine code.  It provides a wrapper for publicly available Cisco SDKs and python libraries allowing users to develop 'Task' libraries and execute them using a simple linear workflow engine.
 
-An example module providing a few sample tasks using the [dnacentersdk](https://dnacentersdk.readthedocs.io/en/latest/#) can be found in (TBD).
+An example module providing a few sample tasks in [this project](https://github.com/cunningr/dna_workflows_example_module)
 
 Currently integrated SDKs
 
@@ -19,28 +19,59 @@ You can install DNA Workflows using ```pip3```
 pip3 install dna_workflows
 ```
 
-A workflow is a user defined sequence of tasks and associated data passed to the workflow engine for execution.  For convenience, a workflow and all of its input data can be provided via an Excel workbook which is the recommended way to get started.  Workflows can also converted from Excel to YAML to be maintained and executed directly in this format.
+A workflow is a user defined sequence of tasks and associated data passed to the workflow engine for execution.  For convenience, a workflow and all of its input data can be provided via an Excel workbook which is the recommended way to get started.  Workflows can also be converted from Excel to YAML to be maintained and executed directly from this format.
 
 After installing DNA Workflows you should be able to use the script directly by typing ```dna_workflows -h``` in your shell;
 
 ```
-# dna_workflows --help
-usage: dna_workflows [-h] [--db DB | --yaml-db YAML_DB] [--build-xlsx BUILD_XLSX] [--noop] [--offline] [--dump-db-to-yaml DUMP_DB_TO_YAML] [--debug] [--persist-module-manifest] [--incognito] [--add-module-skeleton] [--host HOST]
+# dna_workflows -h
+usage: dna_workflows [-h] [--db DB | --yaml-db YAML_DB] [--profile PROFILE]
+                     [--build-xlsx BUILD_XLSX]
+                     [--build-test-xlsx BUILD_TEST_XLSX] [--manifest MANIFEST]
+                     [--install] [--install-url INSTALL_URL]
+                     [--install-zip INSTALL_ZIP]
+                     [--update-xlsx-schema UPDATE_XLSX_SCHEMA] [--validate]
+                     [--noop] [--offline] [--dump-db-to-yaml DUMP_DB_TO_YAML]
+                     [--debug] [--persist-module-manifest]
+                     [--add-module-skeleton] [--host HOST]
 
 optional arguments:
   -h, --help            show this help message and exit
   --db DB               .xlsx file to use as the db
   --yaml-db YAML_DB     .yaml file to use as the db
+  --profile PROFILE     Use this credentials profile
   --build-xlsx BUILD_XLSX
-                        Builds a Excel workflow db based on the module manifest
-  --noop                Run the scheduling logic but do not execute any workflows
-  --offline             Creates a 'dummy' api object, useful for workflow development
+                        Builds a Excel workflow db based on the module
+                        manifest
+  --build-test-xlsx BUILD_TEST_XLSX
+                        Builds a Excel workflow db based on the module
+                        manifest with prepopulated test data
+  --manifest MANIFEST   Used to specify a manifest file when building an xlsx
+                        schema. Note that the modules must already be
+                        installed or available from the current working
+                        directory
+  --install             Install packages using a manifest from the current
+                        working directory
+  --install-url INSTALL_URL
+                        Install packages directly from URL. The URL must
+                        provide a .zip archive for the package.
+  --install-zip INSTALL_ZIP
+                        Install packages directly from a .zip archive.
+  --update-xlsx-schema UPDATE_XLSX_SCHEMA
+                        Takes an existing Excel workflow DB and tries to
+                        update the schema based on the latest module
+                        definition
+  --validate            Requests that the workflow engine validate the DB data
+                        against module schema
+  --noop                Run the scheduling logic but do not execute any
+                        workflows
+  --offline             Creates a 'dummy' api object, useful for workflow
+                        development
   --dump-db-to-yaml DUMP_DB_TO_YAML
                         Creates an yaml file from provided *.xlsx workbook
   --debug               Enable debug level messages mode
   --persist-module-manifest
                         Do not clean up the .modules manifest
-  --incognito           Disable sending of usage statistics
   --add-module-skeleton
                         Create a DNA Workflows module template
   --host HOST           Specify a host running the DNA Workflows Web App
@@ -63,9 +94,11 @@ isepac:
     disable_warnings: True
 ```
 
-Note that the ```credentials``` file needs to be valid YAML.  Once you have updated the ```credentials``` file you can either put it in the directory where you will load/execute the module code, ```./``` or you can put it in a folder in your home dir ```~/.dna_workflows/credentials```.  We recommend the later and to adjust the permissions on the file appropriately (E.g. ```chmod 600```)
+Tip: You can also configure additional profiles (see main documentation TBD)
 
-At this point you should be able to test connectivity to your API endpoint;
+Note that the ```credentials``` file needs to be valid YAML.  Once you have updated the ```credentials``` file you should put it in a folder in your home dir called ```~/.dna_workflows/credentials```.  We recommend to adjust the permissions on the file appropriately (E.g. ```chmod 600```)
+
+At this point you should be able to test connectivity to your API endpoint(s);
 
 ```
 # dna_workflows --noop
@@ -74,24 +107,53 @@ At this point you should be able to test connectivity to your API endpoint;
 2020-06-05 08:54:08,999 - main - INFO - Executing STAGE-1 workflow: noop::noop
 ```
 
-Once you have validated that DNA Workflows can connect to your systems, you will import/develop some modules.  DNA Workflow modules are designed to be fairly simple to develop and extend with the primary focus being on reusability. You can find [an example module here]().  A module consists of two basic elements;
+Once you have validated that DNA Workflows can connect to your systems, you will need to load some workflow modules.  You can load modules;
 
- * One or more public python functions (tasks) that takes exactly two arguments;
-	 * An API class instance from one of the integrated SDKs.
-	 * A python dictionary containing user data
- * A module schema (based on JSON schema) that describes;
-	 * The available public python functions
-	 * The format of the required user data
+ * Directly from a local folder containing the required packages and ```manifest.yaml``` file.
+ * From a ```.zip``` archive containing the required packages and ```manifest.yaml``` file (E.g. a downloaded git repo).
+ * Directly from a URL serving the required ```.zip```.  This can be done directly from Github for example.
 
-After cloning the [example module repository]() you can build the user input Excel for the module like so;
+There is a [sample module here](https://github.com/cunningr/dna_workflows_example_module) that can be installed like so;
 
 ```
-dna_workflows --build-xlsx example.xlsx
+dna_workflows --install-url https://github.com/cunningr/dna_workflows_example_module/archive/master.zip
 ```
+
+This will download and install the modules according the ```manifest.yaml``` in ```~/.dna_workflows/install```.  Next you will need to generate the ```.xlsx``` workflow schema for (all) of your installed workflow modules;
+
+```
+dna_workflows --build-test-xlsx example.xlsx
+```
+
+**Note:** The above option will populate the schema with some example data.  If you want an empty schema you can use ```--build-xlsx``` instead.
 
 This will create a new MS Excel file that contains a ```workflows``` worksheet and one (or more) module worksheets.  You may want to tidy up some of the column widths, but essentially your new workbook should like this;
 
 ![Workflow DB Example](media/example_module_sheet.png)
+
+Now you can go ahead and open up the ```example.xlsx``` and enable one or more of the tasks.  If you want to change the order in which enabled tasks are executed you can change the 'stage' value.
+
+
+**WARNING:** The next step will make changes to your target system(s).
+
+Once you are happy with the example configurations, save the ```.xlsx``` and run the workflow:
+
+```
+dna_workflows --db example.xlsx
+```
+
+If everything worked, the output should look something like this:
+
+```
+2020-08-27 14:31:06 - main - INFO - API connectivity established with dnacentersdk
+2020-08-27 14:31:06 - main - INFO - Executing STAGE-1 workflow: examples::create_global_credentials
+2020-08-27 14:31:06 - main.examples - INFO - examples::create_global_credentials::snmpWrite
+2020-08-27 14:31:08 - main.examples - INFO - Creating SNMPV2_WRITE_COMMUNITY
+2020-08-27 14:31:08 - main.examples - INFO - examples::create_global_credentials::snmpRead
+2020-08-27 14:31:08 - main.examples - INFO - Creating SNMPV2_READ_COMMUNITY
+2020-08-27 14:31:09 - main.examples - INFO - examples::create_global_credentials::cli
+2020-08-27 14:31:09 - main.examples - INFO - Creating CLI credentials for username: dnacadmin
+```
 
 ## Building a Workflow
 
@@ -142,6 +204,17 @@ NOTE: Currently you will need to execute the workflow from the same directory th
 
 ## Creating a Module
 
+DNA Workflow modules are designed to be fairly simple to develop and extend with the primary focus being on reusability. You can study the example module but essentially a module consists of two basic elements;
+
+ * One or more public python functions (tasks) that takes exactly two arguments;
+	 * An API class instance from one of the integrated SDKs.
+	 * A python dictionary containing user data
+ * A module schema (based on JSON schema) that describes;
+	 * The available public python functions
+	 * The format of the required user data
+
+In order to get started creating your own modules you can use the ```--add-module-skeleton``` option to create the required files for a 'Hello World' package.  Immediately after generating the skeleton package you should be able to ```--install``` it and run the "Hello World" task.
+
 Once you have DNA Workflows installed you can create a new skeleton module using the command below;
 
 ```
@@ -151,18 +224,10 @@ email: cunningr@example.com
 Successfully created the directory example_module
 ```
 
-This will create the basic structure and example files for your new (python) module.  In fact, at this point you should be build the workflow db and run the skeleton hello_world task.  First create a ```manifest.yml``` file that contains the name of your new module;
+This will create the basic structure and example files for your new (python) module.  In fact, at this point you should be install the module and build the skeleton hello_world schema.
 
 ```
-cat << EOF > manifest.yml
-manifest:
-  - example_module
-EOF
-```
-
-Now we should be able to build the workflow DB;
-
-```
+dna_workflows --install
 dna_workflows --build-xlsx example.xlsx
 ```
 
