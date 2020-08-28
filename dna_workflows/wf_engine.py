@@ -28,12 +28,13 @@ def run_wf(_workflow_db):
     wf_tasks = _workflow_db['workflow']
 
     execution_schedule = build_workflow_schedule(wf_tasks)
+    result = []
     for _task in execution_schedule:
         _task_api = _task[3]
         if _task_api in apis.keys():
             api = apis[_task_api]
             try:
-                execute_task(_task, api, _workflow_db)
+                result.append(execute_task(_task, api, _workflow_db))
             except Exception as e:
                 logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
                 logger.error('**** TRACEBACK ***\n\n {}'.format(traceback.format_exc()))
@@ -46,8 +47,8 @@ def run_wf(_workflow_db):
         else:
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
-
-    return
+    print(result)
+    return result
 
 
 def build_workflow_schedule(wf_tasks):
@@ -82,7 +83,7 @@ def execute_task(_task, api, _workflow_db):
 
         # We shouldn't need to load the module
         # packages.load_module(_module)
-        packages.execute_task(api, _module, _task, _workflow_dict)
+        return packages.execute_task(api, _module, _task, _workflow_dict)
 
 
 def run_setup(_workflow_db):

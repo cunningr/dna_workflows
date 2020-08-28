@@ -93,12 +93,12 @@ def execute_task(api, _module, _task, _workflow_dict):
     _func = '{}.{}'.format(_module, _task)
     _task_exec = '{}(api, copy.deepcopy({}))'.format(_func, _workflow_dict)
     if _func in _manifest:
-        exec(_task_exec)
+        result = eval(_task_exec)
     else:
         logger.error('Task {} from workflow module {} is not loaded'.format(_task, _module))
         return -1
 
-    return
+    return result
 
 
 def build_module_list():

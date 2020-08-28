@@ -99,6 +99,7 @@ def run(_args=None):
     if 'host' in workflow_db['options'].keys():
         url = 'http://{}/workflow'.format(workflow_db['options']['host'])
         r = requests.post(url, data=json.dumps(workflow_db))
+        print(r.json())
     else:
         wf_engine.run_wf(workflow_db)
 
