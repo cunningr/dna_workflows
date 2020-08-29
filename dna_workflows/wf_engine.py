@@ -107,6 +107,7 @@ def run_setup(_workflow_db, headless=True):
                                         'programname': {'color': 'cyan'}, 'username': {'color': 'yellow'}})
 
     if headless:
+        logger.info('DNA Workflow running in HEADLESS mode')
         fh = logging.FileHandler('workflow.log')
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
