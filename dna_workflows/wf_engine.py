@@ -22,8 +22,8 @@ def get_module_definition():
     return yaml.load(data, Loader=yaml.SafeLoader)
 
 
-def run_wf(_workflow_db):
-    apis = run_setup(_workflow_db)
+def run_wf(_workflow_db, headless=False):
+    apis = run_setup(_workflow_db, headless=headless)
 
     wf_tasks = _workflow_db['workflow']
 
@@ -86,7 +86,7 @@ def execute_task(_task, api, _workflow_db):
         return packages.execute_task(api, _module, _task, _workflow_dict)
 
 
-def run_setup(_workflow_db):
+def run_setup(_workflow_db, headless=True):
     global logger
 
     if 'options' in _workflow_db.keys():
@@ -106,6 +106,13 @@ def run_setup(_workflow_db):
                                         'levelname': {'bold': True, 'color': 'black'}, 'name': {'color': 'yellow'},
                                         'programname': {'color': 'cyan'}, 'username': {'color': 'yellow'}})
 
+    if headless:
+        fh = logging.FileHandler('workflow.log')
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        fh.setLevel(level)
+        logging.getLogger().addHandler(fh)
+
     api = {}
     if 'offline' in _workflow_db['api_creds'].keys():
         api = {'offline': True}
@@ -120,7 +127,7 @@ def run_setup(_workflow_db):
             api.update({'isepac': _sdk})
             nosdk = False
 
-        # If we didn't find and SDK then exit
+        # If we didn't find an SDK then exit
         if nosdk:
             logger.error('No valid SDK credentials found')
             exit()
