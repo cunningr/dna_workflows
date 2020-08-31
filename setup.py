@@ -5,7 +5,7 @@ setup(
   package_data={
     'dna_workflows': ['module']
   },
-  version='0.0.17',
+  version='0.0.18',
   license='MIT',
   description='dna_workflows is a basic workflow engine for executing DNA Workflows packages',
   author='Richard Cunningham',
