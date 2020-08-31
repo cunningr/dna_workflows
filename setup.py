@@ -21,6 +21,7 @@ setup(
       'netaddr',
       'pyyaml',
       'coloredlogs',
+      'tabulate',
       'sdtables',
       'dnacentersdk',
       'ISE'

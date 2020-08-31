@@ -10,3 +10,4 @@ sdtables
 openpyxl
 ISE
 coloredlogs
+tabulate

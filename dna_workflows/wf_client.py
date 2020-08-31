@@ -11,6 +11,7 @@ import requests
 from pathlib import Path
 from dna_workflows import wf_engine
 from dna_workflows import schema_tools
+from tabulate import tabulate
 
 sys.path.append(os.getcwd())
 module_file_path = './.modules'
@@ -97,9 +98,8 @@ def run(_args=None):
     write_modules_manifest(workflow_db)
 
     if 'host' in workflow_db['options'].keys():
-        url = 'http://{}/workflow'.format(workflow_db['options']['host'])
-        r = requests.post(url, data=json.dumps(workflow_db))
-        print(r.json())
+        exec_dnawfaas(args, workflow_db)
+        return
     else:
         wf_engine.run_wf(workflow_db)
 
@@ -172,46 +172,50 @@ def parse_args(args):
     parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
     parser.add_argument("--add-module-skeleton", action='store_true', help="Create a DNA Workflows module template")
     parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
+    parser.add_argument("--job-status", help="/job/status/<id>.  Retrieves the job status from DNAWFaaS.  Requires "
+                                             "the --host argument.")
+    parser.add_argument("--job-files", help="/job/files/<id>.  Retrieves the job files from DNAWFaaS.  Requires "
+                                             "the --host argument.")
 
     return parser.parse_args(args)
 
-
-def _manifest_loader(args):
-    if args.module:
-        _import = 'import {}'.format(args.module)
-        exec(_import, globals())
-        _manifest_str = '{}.manifest'.format(args.module)
-        module_list = []
-        for _sub_module in globals()[args.module].manifest:
-            module_list.append('{}.{}'.format(args.module, _sub_module))
-        _manifest = {'manifest': module_list, 'provides': globals()[args.module].provides}
-    elif args.manifest:
-        manifest_file = Path(args.manifest)
-        if manifest_file.is_file():
-            try:
-                _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
-            except Exception as e:
-                print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
-                print(e)
-                return
-        else:
-            print('ERROR: manifest file {} not found'.format(manifest_file))
-            return
-
-    else:
-        manifest_file = Path('manifest.yaml')
-        if manifest_file.is_file():
-            try:
-                _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
-            except Exception as e:
-                print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
-                print(e)
-                return
-        else:
-            print('ERROR: manifest file {} not found'.format(manifest_file))
-            return
-
-    return _manifest
+# This should no longer be used ...
+# def _manifest_loader(args):
+#     if args.module:
+#         _import = 'import {}'.format(args.module)
+#         exec(_import, globals())
+#         _manifest_str = '{}.manifest'.format(args.module)
+#         module_list = []
+#         for _sub_module in globals()[args.module].manifest:
+#             module_list.append('{}.{}'.format(args.module, _sub_module))
+#         _manifest = {'manifest': module_list, 'provides': globals()[args.module].provides}
+#     elif args.manifest:
+#         manifest_file = Path(args.manifest)
+#         if manifest_file.is_file():
+#             try:
+#                 _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
+#             except Exception as e:
+#                 print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
+#                 print(e)
+#                 return
+#         else:
+#             print('ERROR: manifest file {} not found'.format(manifest_file))
+#             return
+#
+#     else:
+#         manifest_file = Path('manifest.yaml')
+#         if manifest_file.is_file():
+#             try:
+#                 _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
+#             except Exception as e:
+#                 print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
+#                 print(e)
+#                 return
+#         else:
+#             print('ERROR: manifest file {} not found'.format(manifest_file))
+#             return
+#
+#     return _manifest
 
 
 def compile_workflow(args):
@@ -334,6 +338,41 @@ def write_to_file(path, file, data):
     f = open(_path_to_file, "w")
     f.write(data)
     f.close()
+
+
+def exec_dnawfaas(args, workflow_db):
+
+    if args.job_status:
+        _status_url = args.job_status
+        url = 'http://{}/{}'.format(workflow_db['options']['host'], _status_url)
+        r = requests.get(url)
+        job_status = r.json()
+        print(job_status)
+        print('\nWorkflow Report')
+        print(tabulate([
+            ['Job ID:', job_status['id']],
+            ['Start time:', job_status['details']['start_time']],
+            ['Status:', job_status['details']['status']]
+            ]
+        ))
+        if 'results' in job_status['details'].keys():
+            _results = []
+            for _task in job_status['details']['results']:
+                _results.append(
+                    ['Stage {}'.format(1), _task['task'], _task['result']]
+                )
+            print('\nTask Report')
+            print(tabulate(_results, headers=['Stage', 'Task', 'Result']))
+    else:
+        url = 'http://{}/workflow'.format(workflow_db['options']['host'])
+        r = requests.post(url, data=json.dumps(workflow_db))
+        job_urls = json.loads(r.json())
+        print(tabulate([
+            ['Status URL:', job_urls['job_status']],
+            ['Files URL:', job_urls['job_files']]
+            ],
+            headers=['Item', 'URL']
+        ))
 
 
 if __name__ == "__main__":
