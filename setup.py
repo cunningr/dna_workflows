@@ -24,7 +24,8 @@ setup(
       'tabulate',
       'sdtables',
       'dnacentersdk',
-      'ISE'
+      'ISE',
+      'dna_workflows'
   ],
   classifiers=[
     'Development Status :: 3 - Alpha',
