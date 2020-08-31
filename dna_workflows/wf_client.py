@@ -172,9 +172,9 @@ def parse_args(args):
     parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
     parser.add_argument("--add-module-skeleton", action='store_true', help="Create a DNA Workflows module template")
     parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
-    parser.add_argument("--job-status", help="/job/status/<id>.  Retrieves the job status from DNAWFaaS.  Requires "
+    parser.add_argument("--job-status", help="Retrieves the job status from DNAWFaaS given the job <id>.  Requires "
                                              "the --host argument.")
-    parser.add_argument("--job-files", help="/job/files/<id>.  Retrieves the job files from DNAWFaaS.  Requires "
+    parser.add_argument("--job-files", help="Retrieves the job files from DNAWFaaS given the job <id>.  Requires "
                                              "the --host argument.")
 
     return parser.parse_args(args)
@@ -343,35 +343,60 @@ def write_to_file(path, file, data):
 def exec_dnawfaas(args, workflow_db):
 
     if args.job_status:
-        _status_url = args.job_status
-        url = 'http://{}/{}'.format(workflow_db['options']['host'], _status_url)
+        _job_id = args.job_status
+        url = 'http://{}/job/status/{}'.format(workflow_db['options']['host'], _job_id)
         r = requests.get(url)
         job_status = r.json()
-        print(job_status)
         print('\nWorkflow Report')
         print(tabulate([
             ['Job ID:', job_status['id']],
             ['Start time:', job_status['details']['start_time']],
+            ['End time:', job_status['details']['end_time']],
             ['Status:', job_status['details']['status']]
-            ]
+            ],
+            tablefmt="pretty",
+            colalign=("left", "left")
         ))
         if 'results' in job_status['details'].keys():
             _results = []
             for _task in job_status['details']['results']:
                 _results.append(
-                    ['Stage {}'.format(1), _task['task'], _task['result']]
+                    ['Stage {}'.format(_task['stage']), _task['task'], _task['result']]
                 )
             print('\nTask Report')
-            print(tabulate(_results, headers=['Stage', 'Task', 'Result']))
+            print(tabulate(
+                _results,
+                headers=['Stage', 'Task', 'Result'],
+                tablefmt="pretty",
+                colalign=("left", "left",)),
+            )
+            print('')
+    elif args.job_files:
+        _job_id = args.job_files
+        url = 'http://{}/job/files/{}'.format(workflow_db['options']['host'], _job_id)
+        r = requests.get(url)
+        if r.status_code == 404:
+            _error = r.json()
+            print('ERROR: 404 Not found: {}'.format(_error['error']))
+        elif r.status_code == 200:
+            _save_file = 'results_{}.zip'.format(_job_id)
+            file = open(_save_file, "wb")
+            file.write(r.content)
+            file.close()
+            print('Saved job files to: {}'.format(_save_file))
     else:
         url = 'http://{}/workflow'.format(workflow_db['options']['host'])
         r = requests.post(url, data=json.dumps(workflow_db))
         job_urls = json.loads(r.json())
+        print(job_urls)
         print(tabulate([
+            ['Job ID:', job_urls['id']],
             ['Status URL:', job_urls['job_status']],
             ['Files URL:', job_urls['job_files']]
             ],
-            headers=['Item', 'URL']
+            headers=['Item', 'URL'],
+            tablefmt="pretty",
+            colalign=("left", "left")
         ))
 
 
