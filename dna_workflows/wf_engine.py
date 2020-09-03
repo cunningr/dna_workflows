@@ -36,7 +36,7 @@ def run_wf(_workflow_db, headless=False):
             try:
                 _result = execute_task(_task, api, _workflow_db)
                 _mod_task = '{}.{}'.format(_task[1], _task[2])
-                if _result in ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE']:
+                if _result in ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE', 'NOOP']:
                     _report.append({'stage': _task[0], 'task': _mod_task, 'result': _result})
                 else:
                     _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'UNKNOWN'})
@@ -81,8 +81,9 @@ def execute_task(_task, api, _workflow_db):
     else:
         options = {}
 
-    if 'noop' in _module or 'offline' == api:
+    if 'noop' in _workflow_db['options'] or 'offline' == api:
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
+        return 'NOOP'
     else:
 
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
