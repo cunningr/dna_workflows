@@ -31,11 +31,12 @@ def run_wf(_workflow_db, headless=False):
     _report = []
     for _task in execution_schedule:
         _task_api = _task[3]
+        _mod_task = '{}.{}'.format(_task[1], _task[2])
         if _task_api in apis.keys():
             api = apis[_task_api]
             try:
                 _result = execute_task(_task, api, _workflow_db)
-                _mod_task = '{}.{}'.format(_task[1], _task[2])
+                # _mod_task = '{}.{}'.format(_task[1], _task[2])
                 if _result in ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE', 'NOOP']:
                     _report.append({'stage': _task[0], 'task': _mod_task, 'result': _result})
                 else:
@@ -43,17 +44,17 @@ def run_wf(_workflow_db, headless=False):
             except Exception as e:
                 logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
                 logger.error('**** TRACEBACK ***\n\n {}'.format(traceback.format_exc()))
-        elif 'noop' in _task_api:
-            api = 'noop'
-            execute_task(_task, api, _workflow_db)
+        # elif 'noop' in _task_api:
+        #     api = 'noop'
+        #     execute_task(_task, api, _workflow_db)
         elif 'offline' in apis.keys():
             api = 'offline'
-            execute_task(_task, api, _workflow_db)
+            _result = execute_task(_task, api, _workflow_db)
+            _report.append({'stage': 0, 'task': _mod_task, 'result': _result})
         else:
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
 
-    # print(_report)
     return _report
 
 
