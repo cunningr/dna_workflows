@@ -53,7 +53,7 @@ def run_wf(_workflow_db, headless=False):
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
 
-    print(_report)
+    # print(_report)
     return _report
 
 
