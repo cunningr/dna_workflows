@@ -91,11 +91,11 @@ def run(_args=None):
         _row.pop('author', None)
         _row.pop('documentation', None)
 
-    if args.dump_db_to_yaml:
-        with open(args.dump_db_to_yaml, 'w') as file:
-            yaml.dump(workflow_db, file)
+    # if args.dump_db_to_yaml:
+    #     with open(args.dump_db_to_yaml, 'w') as file:
+    #         yaml.dump(workflow_db, file)
 
-    write_modules_manifest(workflow_db)
+    # write_modules_manifest(workflow_db)
 
     if 'host' in workflow_db['options'].keys():
         exec_dnawfaas(args, workflow_db)
@@ -109,6 +109,7 @@ def run(_args=None):
             os.remove(module_file_path)
 
 
+# This definitely needs to move to wf_engine.py
 def process_wf_tasks(workflow_db):
     _workflow_task_list = []
 
@@ -194,6 +195,10 @@ def compile_workflow(args):
     else:
         _workflow_db = {'workflow': [{'stage': '1', 'module': 'noop', 'task': 'noop', 'api': 'noop'}]}
 
+    if args.dump_db_to_yaml:
+        with open(args.dump_db_to_yaml, 'w') as file:
+            yaml.dump(_workflow_db, file)
+
     # Build options for workflow_db
     if args.offline:
         _workflow_db.update({'api_creds': {'offline': True}})
@@ -215,10 +220,6 @@ def compile_workflow(args):
         schema_tools.validate_module_schema(_workflow_db)
 
     _workflow_db.update({'options': options})
-
-    # if args.dump_db_to_yaml:
-    #     with open(args.dump_db_to_yaml, 'w') as file:
-    #         yaml.dump(_workflow_db, file)
 
     return _workflow_db
 
