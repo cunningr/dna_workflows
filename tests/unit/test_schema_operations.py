@@ -37,14 +37,14 @@ class TestModuleCreate:
     def test_build_xlsx(self):
         _xlsx_db = '{}.xlsx'.format(file_db)
         with patch('sys.argv', ['dna_workflows', '--build-xlsx', _xlsx_db]):
-            wf_client.run()
+            wf_client.main()
         LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
         assert os.path.isfile(_xlsx_db)
 
     def test_build_test_xlsx(self):
         _xlsx_db = 'test_{}.xlsx'.format(file_db)
         with patch('sys.argv', ['dna_workflows', '--build-test-xlsx', _xlsx_db]):
-            wf_client.run()
+            wf_client.main()
         LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
         assert os.path.isfile(_xlsx_db)
 
@@ -52,7 +52,7 @@ class TestModuleCreate:
         _xlsx_db = 'test_{}.xlsx'.format(file_db)
         _xlsx_db_save = 'save.test_{}.xlsx'.format(file_db)
         with patch('sys.argv', ['dna_workflows', '--update-xlsx-schema', _xlsx_db]):
-            wf_client.run()
+            wf_client.main()
         LOGGER.debug('Assert isfile: {}'.format(_xlsx_db))
         LOGGER.debug('Assert isfile: {}'.format(_xlsx_db_save))
         assert os.path.isfile(_xlsx_db)
@@ -61,7 +61,7 @@ class TestModuleCreate:
     def test_run_workflow_no_creds(self, capsys):
         _xlsx_db = '{}.xlsx'.format(file_db)
         with patch('sys.argv', ['dna_workflows', '--db', _xlsx_db]):
-            wf_client.run()
+            wf_client.main()
         captured = capsys.readouterr()
         LOGGER.debug('OUTPUT: {}'.format(captured.out))
         LOGGER.debug('ERROR: {}'.format(captured.err))
@@ -76,7 +76,7 @@ class TestModuleCreate:
             '--dump-db-to-yaml', _yaml_db,
             '--offline'
         ]):
-            wf_client.run()
+            wf_client.main()
         LOGGER.debug('Assert isfile: {}'.format(_yaml_db))
         assert os.path.isfile(_yaml_db)
         _workflow_db = yaml.load(open(_yaml_db, 'r'), Loader=yaml.SafeLoader)
