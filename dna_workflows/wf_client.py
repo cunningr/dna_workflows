@@ -11,6 +11,7 @@ import requests
 from pathlib import Path
 from dna_workflows import wf_engine
 from dna_workflows import schema_tools
+from tabulate import tabulate
 
 sys.path.append(os.getcwd())
 module_file_path = './.modules'
@@ -90,23 +91,25 @@ def run(_args=None):
         _row.pop('author', None)
         _row.pop('documentation', None)
 
-    if args.dump_db_to_yaml:
-        with open(args.dump_db_to_yaml, 'w') as file:
-            yaml.dump(workflow_db, file)
+    # if args.dump_db_to_yaml:
+    #     with open(args.dump_db_to_yaml, 'w') as file:
+    #         yaml.dump(workflow_db, file)
 
-    write_modules_manifest(workflow_db)
+    # write_modules_manifest(workflow_db)
 
     if 'host' in workflow_db['options'].keys():
-        url = 'http://{}/workflow'.format(workflow_db['options']['host'])
-        r = requests.post(url, data=json.dumps(workflow_db))
+        exec_dnawfaas(args, workflow_db)
+        return
     else:
-        wf_engine.run_wf(workflow_db)
+        results = wf_engine.run_wf(workflow_db)
+        print_workflow_results(results)
 
     if not args.persist_module_manifest:
         if os.path.isfile(module_file_path):
             os.remove(module_file_path)
 
 
+# This definitely needs to move to wf_engine.py
 def process_wf_tasks(workflow_db):
     _workflow_task_list = []
 
@@ -171,46 +174,12 @@ def parse_args(args):
     parser.add_argument("--persist-module-manifest", action='store_true', help="Do not clean up the .modules manifest")
     parser.add_argument("--add-module-skeleton", action='store_true', help="Create a DNA Workflows module template")
     parser.add_argument("--host", help="Specify a host running the DNA Workflows Web App")
+    parser.add_argument("--job-status", help="Retrieves the job status from DNAWFaaS given the job <id>.  Requires "
+                                             "the --host argument.")
+    parser.add_argument("--job-files", help="Retrieves the job files from DNAWFaaS given the job <id>.  Requires "
+                                             "the --host argument.")
 
     return parser.parse_args(args)
-
-
-def _manifest_loader(args):
-    if args.module:
-        _import = 'import {}'.format(args.module)
-        exec(_import, globals())
-        _manifest_str = '{}.manifest'.format(args.module)
-        module_list = []
-        for _sub_module in globals()[args.module].manifest:
-            module_list.append('{}.{}'.format(args.module, _sub_module))
-        _manifest = {'manifest': module_list, 'provides': globals()[args.module].provides}
-    elif args.manifest:
-        manifest_file = Path(args.manifest)
-        if manifest_file.is_file():
-            try:
-                _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
-            except Exception as e:
-                print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
-                print(e)
-                return
-        else:
-            print('ERROR: manifest file {} not found'.format(manifest_file))
-            return
-
-    else:
-        manifest_file = Path('manifest.yaml')
-        if manifest_file.is_file():
-            try:
-                _manifest = yaml.load(open(manifest_file, 'r'), Loader=yaml.SafeLoader)
-            except Exception as e:
-                print('Unable to load manifest {}.  Please check this valid YAML'.format(manifest_file))
-                print(e)
-                return
-        else:
-            print('ERROR: manifest file {} not found'.format(manifest_file))
-            return
-
-    return _manifest
 
 
 def compile_workflow(args):
@@ -225,6 +194,10 @@ def compile_workflow(args):
         _workflow_db = schema_tools.load_xl_wf_db(args.db, flatten=True)
     else:
         _workflow_db = {'workflow': [{'stage': '1', 'module': 'noop', 'task': 'noop', 'api': 'noop'}]}
+
+    if args.dump_db_to_yaml:
+        with open(args.dump_db_to_yaml, 'w') as file:
+            yaml.dump(_workflow_db, file)
 
     # Build options for workflow_db
     if args.offline:
@@ -247,10 +220,6 @@ def compile_workflow(args):
         schema_tools.validate_module_schema(_workflow_db)
 
     _workflow_db.update({'options': options})
-
-    # if args.dump_db_to_yaml:
-    #     with open(args.dump_db_to_yaml, 'w') as file:
-    #         yaml.dump(_workflow_db, file)
 
     return _workflow_db
 
@@ -333,6 +302,83 @@ def write_to_file(path, file, data):
     f = open(_path_to_file, "w")
     f.write(data)
     f.close()
+
+
+def print_workflow_results(_results):
+    _fresults = []
+    for _task in _results:
+        _fresults.append(
+            ['Stage {}'.format(_task['stage']), _task['task'], _task['result']]
+        )
+    print('\nTask Report:')
+    print(tabulate(
+        _fresults,
+        headers=['Stage', 'Task', 'Result'],
+        tablefmt="pretty",
+        colalign=("left", "left",)),
+    )
+    print('')
+
+
+def exec_dnawfaas(args, workflow_db):
+
+    if args.job_status:
+        _job_id = args.job_status
+        url = 'http://{}/job/status/{}'.format(workflow_db['options']['host'], _job_id)
+        r = requests.get(url)
+        job_status = r.json()
+        print(job_status)
+        print('\nWorkflow Report:')
+        print(tabulate([
+            ['Job ID:', job_status['id']],
+            ['Start time:', job_status['details']['start_time']],
+            ['End time:', job_status['details']['end_time']],
+            ['Status:', job_status['details']['status']]
+            ],
+            tablefmt="pretty",
+            colalign=("left", "left")
+        ))
+        if 'results' in job_status['details'].keys():
+            print_workflow_results(job_status['details']['results'])
+    elif args.job_files:
+        _job_id = args.job_files
+        url = 'http://{}/job/files/{}'.format(workflow_db['options']['host'], _job_id)
+        r = requests.get(url)
+        if r.status_code == 404:
+            _error = r.json()
+            print('ERROR: 404 Not found: {}'.format(_error['error']))
+        elif r.status_code == 200:
+            _save_file = 'results_{}.zip'.format(_job_id)
+            file = open(_save_file, "wb")
+            file.write(r.content)
+            file.close()
+            print('Saved job files to: {}'.format(_save_file))
+    elif args.build_xlsx or args.build_test_xlsx:
+        _save_file = args.build_xlsx
+        url = 'http://{}/schema/xlsx'.format(workflow_db['options']['host'])
+        r = requests.get(url)
+        if r.status_code == 404:
+            _error = r.json()
+            print('ERROR: 404 Not found: dna_workflows.xlsx: {}'.format(_error['error']))
+        elif r.status_code == 200:
+            file = open(_save_file, "wb")
+            file.write(r.content)
+            file.close()
+            print('Saved schema file to: {}'.format(_save_file))
+    else:
+        url = 'http://{}/workflow'.format(workflow_db['options']['host'])
+        r = requests.post(url, data=json.dumps(workflow_db))
+        job_urls = json.loads(r.json())
+
+        print(tabulate([
+            ['Job ID:', job_urls['id']],
+            ['Status URL:', job_urls['job_status']],
+            ['Files URL:', job_urls['job_files']]
+            ],
+            headers=['Item', 'URL'],
+            tablefmt="pretty",
+            colalign=("left", "left")
+        ))
 
 
 if __name__ == "__main__":

@@ -20,6 +20,9 @@ module:
           description: Select API type
           enum: ['dnacentersdk', 'isepac']
           type: string
+        version:
+          description: Code version for this task
+          type: string
         author:
           type: string
         description:

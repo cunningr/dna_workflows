@@ -22,32 +22,40 @@ def get_module_definition():
     return yaml.load(data, Loader=yaml.SafeLoader)
 
 
-def run_wf(_workflow_db):
-    apis = run_setup(_workflow_db)
+def run_wf(_workflow_db, headless=False):
+    apis = run_setup(_workflow_db, headless=headless)
 
     wf_tasks = _workflow_db['workflow']
 
     execution_schedule = build_workflow_schedule(wf_tasks)
+    _report = []
     for _task in execution_schedule:
         _task_api = _task[3]
+        _mod_task = '{}.{}'.format(_task[1], _task[2])
         if _task_api in apis.keys():
             api = apis[_task_api]
             try:
-                execute_task(_task, api, _workflow_db)
+                _result = execute_task(_task, api, _workflow_db)
+                # _mod_task = '{}.{}'.format(_task[1], _task[2])
+                if _result in ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE', 'NOOP']:
+                    _report.append({'stage': _task[0], 'task': _mod_task, 'result': _result})
+                else:
+                    _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'UNKNOWN'})
             except Exception as e:
                 logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
                 logger.error('**** TRACEBACK ***\n\n {}'.format(traceback.format_exc()))
-        elif 'noop' in _task_api:
-            api = 'noop'
-            execute_task(_task, api, _workflow_db)
+        # elif 'noop' in _task_api:
+        #     api = 'noop'
+        #     execute_task(_task, api, _workflow_db)
         elif 'offline' in apis.keys():
             api = 'offline'
-            execute_task(_task, api, _workflow_db)
+            _result = execute_task(_task, api, _workflow_db)
+            _report.append({'stage': 0, 'task': _mod_task, 'result': _result})
         else:
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
 
-    return
+    return _report
 
 
 def build_workflow_schedule(wf_tasks):
@@ -74,18 +82,19 @@ def execute_task(_task, api, _workflow_db):
     else:
         options = {}
 
-    if 'noop' in _module or 'offline' == api:
+    if 'noop' in _workflow_db['options'] or 'offline' == api:
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
+        return 'NOOP'
     else:
 
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
 
         # We shouldn't need to load the module
         # packages.load_module(_module)
-        packages.execute_task(api, _module, _task, _workflow_dict)
+        return packages.execute_task(api, _module, _task, _workflow_dict)
 
 
-def run_setup(_workflow_db):
+def run_setup(_workflow_db, headless=True):
     global logger
 
     if 'options' in _workflow_db.keys():
@@ -105,6 +114,14 @@ def run_setup(_workflow_db):
                                         'levelname': {'bold': True, 'color': 'black'}, 'name': {'color': 'yellow'},
                                         'programname': {'color': 'cyan'}, 'username': {'color': 'yellow'}})
 
+    if headless:
+        logger.info('DNA Workflow running in HEADLESS mode')
+        fh = logging.FileHandler('workflow.log')
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        fh.setLevel(level)
+        logging.getLogger().addHandler(fh)
+
     api = {}
     if 'offline' in _workflow_db['api_creds'].keys():
         api = {'offline': True}
@@ -119,7 +136,7 @@ def run_setup(_workflow_db):
             api.update({'isepac': _sdk})
             nosdk = False
 
-        # If we didn't find and SDK then exit
+        # If we didn't find an SDK then exit
         if nosdk:
             logger.error('No valid SDK credentials found')
             exit()
