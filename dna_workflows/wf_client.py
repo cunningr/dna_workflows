@@ -107,7 +107,7 @@ def exec_wflocal(args):
     results = wf_engine.run_wf(workflow_db)
     print_workflow_results(results)
 
-    return 'UNKNOWN'
+    return results
 
 
 def exec_wfaas(args):
