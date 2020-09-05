@@ -144,23 +144,27 @@ def validate_module_schema(_workflow_db, stdout=False):
 
     :returns: Boolean depending on validation results """
     _workflow_db['workflow'] = package_tools.transform_wf_tasks(_workflow_db)
+    _modules = []
     for _task in _workflow_db['workflow']:
-        if 'enabled' in _task['status']:
-            module_doc = package_tools.get_module_doc(_task['module'])
-            module_name = module_doc['module']['name']
-            print('VALIDATING module: {}'.format(module_name))
-            if 'schemas' in module_doc['module']:
-                for _schema, _properties in module_doc['module']['schemas'].items():
-                    _dnawf_schema_name = '{}.schema.{}'.format(_schema, module_name)
-                    if _dnawf_schema_name in _workflow_db.keys():
-                        print('VALIDATING schema: {}'.format(_dnawf_schema_name))
-                        _result = sdtables.validate_data(_properties, _workflow_db[_dnawf_schema_name])
-                        if stdout:
-                            print_validation_results(_result)
-                        else:
-                            return _result
+        if 'enabled' in _task['status'] and _task['module'] not in _modules:
+            _modules.append(_task['module'])
+
+    for _module in _modules:
+        module_doc = package_tools.get_module_doc(_module)
+        module_name = module_doc['module']['name']
+        print('VALIDATING module: {}'.format(module_name))
+        if 'schemas' in module_doc['module']:
+            for _schema, _properties in module_doc['module']['schemas'].items():
+                _dnawf_schema_name = '{}.schema.{}'.format(_schema, module_name)
+                if _dnawf_schema_name in _workflow_db.keys():
+                    print('VALIDATING schema: {}'.format(_dnawf_schema_name))
+                    _result = sdtables.validate_data(_properties, _workflow_db[_dnawf_schema_name])
+                    if stdout:
+                        print_validation_results(_result)
                     else:
-                        print('scheam {} not found'.format(_dnawf_schema_name))
+                        return _result
+                else:
+                    print('scheam {} not found'.format(_dnawf_schema_name))
 
     return
 
