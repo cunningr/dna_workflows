@@ -104,14 +104,6 @@ def build_workflow_task_sheet(_wb, _modules, user_data=None):
             for m in module_doc['module']['methods']:
                 methods.append(m)
 
-        # if user_data is not None:
-        #     user_methods = user_data['workflow']
-        #     # Surely this could be written as a list comprehension?
-        #     for _m in methods:
-        #         for row in user_methods:
-        #             if _m['module'] == row['module'] and _m['task'] == row['task']:
-        #                 _m['status'] = row['status']
-
         _table_name = 'workflow.{}'.format(_schema_suffix)
         if user_data is not None:
             user_methods = get_data_from_schema(_table_name, user_data)
@@ -144,30 +136,47 @@ def get_data_from_schema(_schema_name, _db):
         return []
 
 
-def validate_module_schema(_workflow_db):
+def validate_module_schema(_workflow_db, stdout=False):
     """ Validates the pre-loaded workflow DB against the module schema.
 
+    :param stdout: Print results to STDOUT
     :param _workflow_db: (object) A DNA Workflows db pre-loaded from either Excel or YAML
 
     :returns: Boolean depending on validation results """
+    _workflow_db['workflow'] = package_tools.transform_wf_tasks(_workflow_db)
+    _modules = []
     for _task in _workflow_db['workflow']:
-        if 'enabled' in _task['status']:
-            exec_str = 'import {}'.format(_task['module'])
-            exec(exec_str)
-            exec_str = '{}.get_module_definition()'.format(_task['module'])
-            module_doc = eval(exec_str)
-            module_name = module_doc['module']['name']
-            print('VALIDATING module: {}'.format(module_name))
-            if 'schemas' in module_doc['module']:
-                for _schema, _properties in module_doc['module']['schemas'].items():
-                    _dnawf_schema_name = '{}.schema.{}'.format(_schema, module_name)
-                    if _dnawf_schema_name in _workflow_db.keys():
-                        print('VALIDATING schema: {}'.format(_dnawf_schema_name))
-                        sdtables.validate_data(_properties, _workflow_db[_dnawf_schema_name])
+        if 'enabled' in _task['status'] and _task['module'] not in _modules:
+            _modules.append(_task['module'])
+
+    for _module in _modules:
+        module_doc = package_tools.get_module_doc(_module)
+        module_name = module_doc['module']['name']
+        print('VALIDATING module: {}'.format(module_name))
+        if 'schemas' in module_doc['module']:
+            for _schema, _properties in module_doc['module']['schemas'].items():
+                _dnawf_schema_name = '{}.schema.{}'.format(_schema, module_name)
+                if _dnawf_schema_name in _workflow_db.keys():
+                    print('VALIDATING schema: {}'.format(_dnawf_schema_name))
+                    _result = sdtables.validate_data(_properties, _workflow_db[_dnawf_schema_name])
+                    if stdout:
+                        print_validation_results(_result)
                     else:
-                        print('scheam {} not found'.format(_dnawf_schema_name))
+                        return _result
+                else:
+                    print('scheam {} not found'.format(_dnawf_schema_name))
 
     return
+
+
+def print_validation_results(_results):
+    print('RESULT: {}'.format(_results['result']))
+    for _r in _results['details']:
+        if _r['result'] != 'OK':
+            print('Row {} contains validation errors:'.format(_r['row']+1))
+            print('------------------ERROR-----------------'.center(50))
+            print(_r['result'])
+            print('--------------------------------------'.center(50))
 
 # if __name__ == "__main__":
 #     schema = yaml.load(open(manifest, 'r'), Loader=yaml.SafeLoader)

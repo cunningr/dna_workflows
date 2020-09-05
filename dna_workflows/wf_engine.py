@@ -8,7 +8,7 @@ import json
 import sys
 import pkgutil
 from dnacentersdk import DNACenterAPI
-from dna_workflows import package_tools as packages
+from dna_workflows import package_tools
 from ise import ERS
 
 # Settings
@@ -89,9 +89,7 @@ def execute_task(_task, api, _workflow_db):
 
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
 
-        # We shouldn't need to load the module
-        # packages.load_module(_module)
-        return packages.execute_task(api, _module, _task, _workflow_dict)
+        return package_tools.execute_task(api, _module, _task, _workflow_dict)
 
 
 def run_setup(_workflow_db, headless=True):
@@ -140,6 +138,8 @@ def run_setup(_workflow_db, headless=True):
         if nosdk:
             logger.error('No valid SDK credentials found')
             exit()
+
+    _workflow_db['workflow'] = package_tools.transform_wf_tasks(_workflow_db)
 
     return api
 
