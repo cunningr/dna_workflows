@@ -37,16 +37,14 @@ def run_wf(_workflow_db, headless=False):
             try:
                 _result = execute_task(_task, api, _workflow_db)
                 # _mod_task = '{}.{}'.format(_task[1], _task[2])
-                if _result in ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE', 'NOOP']:
+                if _result in ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE', 'NOOP', 'NOT_EVALUATED']:
                     _report.append({'stage': _task[0], 'task': _mod_task, 'result': _result})
                 else:
                     _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'UNKNOWN'})
             except Exception as e:
                 logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
                 logger.error('**** TRACEBACK ***\n\n {}'.format(traceback.format_exc()))
-        # elif 'noop' in _task_api:
-        #     api = 'noop'
-        #     execute_task(_task, api, _workflow_db)
+                _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'ERROR'})
         elif 'offline' in apis.keys():
             api = 'offline'
             _result = execute_task(_task, api, _workflow_db)
