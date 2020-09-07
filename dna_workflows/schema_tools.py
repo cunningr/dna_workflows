@@ -149,6 +149,7 @@ def validate_module_schema(_workflow_db, stdout=False):
         if 'enabled' in _task['status'] and _task['module'] not in _modules:
             _modules.append(_task['module'])
 
+    _results = []
     for _module in _modules:
         module_doc = package_tools.get_module_doc(_module)
         module_name = module_doc['module']['name']
@@ -162,11 +163,11 @@ def validate_module_schema(_workflow_db, stdout=False):
                     if stdout:
                         print_validation_results(_result)
                     else:
-                        return _result
+                        _results.append(_result)
                 else:
                     print('scheam {} not found'.format(_dnawf_schema_name))
 
-    return
+    return _results
 
 
 def print_validation_results(_results):
