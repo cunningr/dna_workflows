@@ -351,12 +351,12 @@ def print_workflow_results(_results):
     _fresults = []
     for _task in _results:
         _fresults.append(
-            ['Stage {}'.format(_task['stage']), _task['task'], _task['result']]
+            ['Stage {}'.format(_task['stage']), _task['task'], _task['result'], _task['percent_success']]
         )
     print('\nTask Report:')
     print(tabulate(
         _fresults,
-        headers=['Stage', 'Task', 'Result'],
+        headers=['Stage', 'Task', 'Result', 'Success %'],
         tablefmt="pretty",
         colalign=("left", "left",)),
     )
