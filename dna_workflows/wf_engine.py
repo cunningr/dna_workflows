@@ -23,6 +23,7 @@ def get_module_definition():
 
 
 def run_wf(_workflow_db, headless=False):
+    results_mask = ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE', 'NOOP', 'NOT_EVALUATED']
     apis = run_setup(_workflow_db, headless=headless)
 
     wf_tasks = _workflow_db['workflow']
@@ -36,15 +37,21 @@ def run_wf(_workflow_db, headless=False):
             api = apis[_task_api]
             try:
                 _result = execute_task(_task, api, _workflow_db)
-                # _mod_task = '{}.{}'.format(_task[1], _task[2])
-                if _result in ['FAILURE', 'SUCCESS', 'ERROR', 'PARTIAL_FAILURE', 'NOOP', 'NOT_EVALUATED']:
-                    _report.append({'stage': _task[0], 'task': _mod_task, 'result': _result})
+                # TODO Should be refactored perhaps to separate function
+                if isinstance(_result, str) and _result in results_mask:
+                    _report.append({'stage': _task[0], 'task': _mod_task, 'result': _result, 'percent_success': -1})
+                elif isinstance(_result, dict):
+                    if 'result' not in _result.keys() and 'percent_success' not in _result.keys():
+                        _report.append(
+                            {'stage': _task[0], 'task': _mod_task, 'result': 'UNKNOWN', 'percent_success': 0})
+                    else:
+                        _report.append({'stage': _task[0], 'task': _mod_task, 'result': _result['result'], 'percent_success': _result['percent_success']})
                 else:
-                    _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'UNKNOWN'})
+                    _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'UNKNOWN', 'percent_success': -1})
             except Exception as e:
                 logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
                 logger.error('**** TRACEBACK ***\n\n {}'.format(traceback.format_exc()))
-                _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'ERROR'})
+                _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'ERROR', 'percent_success': 0})
         elif 'offline' in apis.keys():
             api = 'offline'
             _result = execute_task(_task, api, _workflow_db)
