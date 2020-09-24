@@ -122,17 +122,20 @@ def exec_wfaas(args):
         r = requests.get(url)
         job_status = r.json()
         print('\nWorkflow Report:')
-        print(tabulate([
-            ['Job ID:', job_status['id']],
-            ['Start time:', job_status['details']['start_time']],
-            ['End time:', job_status['details']['end_time']],
-            ['Status:', job_status['details']['status']]
-        ],
-            tablefmt="pretty",
-            colalign=("left", "left")
-        ))
-        if 'results' in job_status['details'].keys():
-            print_workflow_results(job_status['details']['results'])
+        if isinstance(job_status['details'], str):
+            print(job_status['details'])
+        elif isinstance(job_status['details'], dict):
+            print(tabulate([
+                ['Job ID:', job_status['id']],
+                ['Start time:', job_status['details']['start_time']],
+                ['End time:', job_status['details']['end_time']],
+                ['Status:', job_status['details']['status']]
+            ],
+                tablefmt="pretty",
+                colalign=("left", "left")
+            ))
+            if 'results' in job_status['details'].keys():
+                print_workflow_results(job_status['details']['results'])
 
         return job_status
 
