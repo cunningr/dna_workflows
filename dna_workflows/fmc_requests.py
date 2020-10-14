@@ -67,11 +67,11 @@ class fmc_requests():
         self.headers["DOMAIN_UUID"] = domain_uuid
         self.headers["X-auth-access-token"] = access_token
 
-        print('Successfully authenticated to FMC!',
-            f"Domain UUID: {domain_uuid}",
-            f"Access Token: {access_token}",
-            sep="\n"
-        )
+        # print('Successfully authenticated to FMC!',
+        #     f"Domain UUID: {domain_uuid}",
+        #     f"Access Token: {access_token}",
+        #     sep="\n"
+        # )
 
         self.access_token = access_token
         self.domain_uuid = domain_uuid
