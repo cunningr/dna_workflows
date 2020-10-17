@@ -43,7 +43,6 @@ class fmc_requests():
         self.password = password
         self.fmc_authenticate(self.host, self.username, self.password)
 
-
     def fmc_authenticate(self, host, username, password):
         """Authenticate with FMC; get and store the auth token and domain UUID."""
         print("\n==> Authenticating with FMC and requesting an access token")
@@ -67,49 +66,36 @@ class fmc_requests():
         self.headers["DOMAIN_UUID"] = domain_uuid
         self.headers["X-auth-access-token"] = access_token
 
-        # print('Successfully authenticated to FMC!',
-        #     f"Domain UUID: {domain_uuid}",
-        #     f"Access Token: {access_token}",
-        #     sep="\n"
-        # )
-
         self.access_token = access_token
         self.domain_uuid = domain_uuid
-
 
     def _create_url(self, endpoint_path):
         """Create an FMC configuration API endpoint URL."""
         _url = f"https://{self.host}/api/fmc_config/v1/domain/{self.domain_uuid}/{endpoint_path}"
         return _url
 
-
     def post(self, endpoint_path, data):
         """Send a POST request to FMC and return the parsed JSON response."""
         url = self._create_url(endpoint_path)
 
-        print("Sending POST request to", url)
         response = requests.post(url, headers=self.headers, json=data, verify=False)
         response.raise_for_status()
 
         return response.json()
 
-
     def get(self, endpoint_path):
         """Send a GET request to FMC and return the parsed JSON response."""
         url = self._create_url(endpoint_path)
 
-        print("Sending GET request to", url)
         response = requests.get(url, headers=self.headers, verify=False)
         response.raise_for_status()
 
         return response.json()
 
-
     def delete(self, endpoint_path):
         """Send a DELETE request to FMC and return the parsed JSON response."""
         url = self._create_url(endpoint_path)
 
-        print("Sending DELETE request to", url)
         response = requests.delete(url, headers=self.headers, verify=False)
         response.raise_for_status()
 

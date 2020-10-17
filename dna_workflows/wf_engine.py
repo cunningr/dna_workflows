@@ -207,7 +207,7 @@ def sdk_setup_fmc(api_creds):
         # verify = str(api_creds['fmc']['verify']).lower() in ['true']
         # disable_warnings = str(api_creds['fmc']['disable_warnings']).lower() in ['true']
         api = fmc_requests(host, username, password)
-        logger.info('API connectivity established with isepac')
+        logger.info('API connectivity established with fmc')
         return api
     except Exception as e:
         logger.error('error connecting to fmc.  Please verify connectivity, username and password')
