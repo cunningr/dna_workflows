@@ -45,7 +45,6 @@ class fmc_requests():
 
     def fmc_authenticate(self, host, username, password):
         """Authenticate with FMC; get and store the auth token and domain UUID."""
-        print("\n==> Authenticating with FMC and requesting an access token")
 
         self.headers = {}
         self.authentication = HTTPBasicAuth(username, password)
