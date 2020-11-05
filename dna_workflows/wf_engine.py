@@ -52,10 +52,10 @@ def run_wf(_workflow_db, headless=False):
                 logger.error('TASK EXCEPTION: API {}, Task {}'.format(_task_api, _task))
                 logger.error('**** TRACEBACK ***\n\n {}'.format(traceback.format_exc()))
                 _report.append({'stage': _task[0], 'task': _mod_task, 'result': 'ERROR', 'percent_success': 0})
-        elif 'offline' in apis.keys():
+        elif 'noop' in _workflow_db['options'] or 'offline' in apis.keys():
             api = 'offline'
             _result = execute_task(_task, api, _workflow_db)
-            _report.append({'stage': 0, 'task': _mod_task, 'result': _result})
+            _report.append({'stage': 0, 'task': _mod_task, 'result': _result['result'], 'percent_success': _result['percent_success']})
         else:
             logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
@@ -89,7 +89,7 @@ def execute_task(_task, api, _workflow_db):
 
     if 'noop' in _workflow_db['options'] or 'offline' == api:
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
-        return 'NOOP'
+        return {'result': 'SUCCESS', 'percent_success': 100}
     else:
 
         logger.info('Executing STAGE-{} workflow: {}::{}'.format(_stage, _module, _task))
