@@ -57,7 +57,6 @@ def run_wf(_workflow_db, headless=False):
             _result = execute_task(_task, api, _workflow_db)
             _report.append({'stage': 0, 'task': _mod_task, 'result': _result['result'], 'percent_success': _result['percent_success']})
         else:
-            logger.error('api: {} not found.  Please check your credentials file'.format(_task_api))
             exit()
 
     return _report
