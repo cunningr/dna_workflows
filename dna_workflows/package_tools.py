@@ -1,4 +1,5 @@
 import sys
+import subprocess
 import traceback
 import logging
 from pathlib import Path
@@ -42,7 +43,8 @@ def install_manifest():
         else:
             logger.error('Could not find directory {}'.format(_package_name))
             return -1
-
+    # Look for and install requirements.txt
+    install_requirements()
     _install_manifest = load_install_manifest()
     _install_manifest['manifest'].update(_manifest['manifest'])
 
@@ -50,6 +52,13 @@ def install_manifest():
     _manifest_file = '{}/manifest.yaml'.format(install_dir)
     with open(_manifest_file, 'w') as file:
         yaml.dump(_install_manifest, file)
+
+
+def install_requirements():
+    _package_requirements = Path('requirements.txt')
+    if _package_requirements.is_file():
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "-r", _package_requirements])
 
 
 def load_install_manifest():
