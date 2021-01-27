@@ -82,6 +82,15 @@ class fmc_requests():
 
         return response.json()
 
+    def put(self, endpoint_path, data):
+        """Send a PUT request to FMC and return the parsed JSON response."""
+        url = self._create_url(endpoint_path)
+
+        response = requests.put(url, headers=self.headers, json=data, verify=False)
+        response.raise_for_status()
+
+        return response.json()
+
     def get(self, endpoint_path):
         """Send a GET request to FMC and return the parsed JSON response."""
         url = self._create_url(endpoint_path)
