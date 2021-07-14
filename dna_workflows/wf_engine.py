@@ -10,6 +10,7 @@ import pkgutil
 from dnacentersdk import DNACenterAPI
 from dna_workflows import package_tools
 from ise import ERS
+from dna_workflows.fmc_requests import fmc_requests
 
 # Settings
 urllib3.disable_warnings()
@@ -137,6 +138,10 @@ def run_setup(_workflow_db, headless=True):
             _sdk = sdk_setup_isepac(_workflow_db['api_creds'])
             api.update({'isepac': _sdk})
             nosdk = False
+        if 'fmc' in _workflow_db['api_creds'].keys():
+            _sdk = sdk_setup_fmc(_workflow_db['api_creds'])
+            api.update({'fmc': _sdk})
+            nosdk = False
 
         # If we didn't find an SDK then exit
         if nosdk:
@@ -189,5 +194,21 @@ def sdk_setup_isepac(api_creds):
         return api
     except Exception as e:
         logger.error('error connecting to isepac.  Please verify connectivity, username and password')
+        logger.error(e)
+        exit()
+
+
+def sdk_setup_fmc(api_creds):
+    try:
+        username = api_creds['fmc']['username']
+        password = api_creds['fmc']['password']
+        host = api_creds['fmc']['host']
+        # verify = str(api_creds['fmc']['verify']).lower() in ['true']
+        # disable_warnings = str(api_creds['fmc']['disable_warnings']).lower() in ['true']
+        api = fmc_requests(host, username, password)
+        logger.info('API connectivity established with fmc')
+        return api
+    except Exception as e:
+        logger.error('error connecting to fmc.  Please verify connectivity, username and password')
         logger.error(e)
         exit()
